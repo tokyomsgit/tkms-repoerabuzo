@@ -169,6 +169,11 @@ body{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   color:#111;margin-bottom:6px;
 }
+.card-name-link{
+  color:#0055cc;
+  text-decoration:none;
+}
+.card-name-link:hover{text-decoration:underline}
 .card-meta{
   display:flex;gap:14px;flex-wrap:wrap;
   font-size:16px;font-weight:700;color:#333;
@@ -1069,7 +1074,7 @@ function renderList(containerId, props, pane) {
       card.dataset.pane = pane;
       card.innerHTML = `
         <div class="card-inner">
-          <div class="card-name" title="${esc(p.n)}">${p.n}</div>
+          <a class="card-name card-name-link" href="${suumoSearchUrl(p.n)}" target="_blank" rel="noopener noreferrer" title="SUUMOで「${esc(p.n)}」を検索">${p.n}</a>
           <div class="card-meta">
             ${pv ? `<span>${pv}</span>` : ''}
             <span>${price}</span>
@@ -1110,6 +1115,12 @@ function renderList(containerId, props, pane) {
       copyBtn.addEventListener('mousedown', e => e.stopPropagation());
       copyBtn.addEventListener('dragstart', e => e.preventDefault());
 
+      const nameLink = card.querySelector('.card-name-link');
+      nameLink.style.pointerEvents = 'auto';
+      nameLink.addEventListener('click', e => e.stopPropagation());
+      nameLink.addEventListener('mousedown', e => e.stopPropagation());
+      nameLink.addEventListener('dragstart', e => e.preventDefault());
+
       el.appendChild(card);
     });
   }
@@ -1148,6 +1159,10 @@ function renderList(containerId, props, pane) {
 
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function suumoSearchUrl(name) {
+  return 'https://suumo.jp/ms/chuko/tokyo/?fw=' + encodeURIComponent(name);
 }
 
 /* ============================================================
