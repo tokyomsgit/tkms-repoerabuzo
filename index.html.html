@@ -174,6 +174,21 @@ body{
   font-size:16px;font-weight:700;color:#333;
 }
 .card-meta span{white-space:nowrap}
+.card-copy-btn{
+  flex-shrink:0;
+  padding:4px 7px;
+  border:2px solid #111;
+  background:#fff;
+  cursor:pointer;
+  font-family:inherit;
+  font-weight:700;
+  font-size:13px;
+  border-radius:4px;
+  color:#333;
+  line-height:1;
+}
+.card-copy-btn:hover{background:#eee}
+.card-copy-btn.copied{background:#FFD700;border-color:#cc9900}
 .card-arrow{font-size:14px;font-weight:700;color:#ccc;flex-shrink:0;}
 
 .empty-state{
@@ -365,6 +380,7 @@ body{
   .prop-card{padding:8px 10px;gap:4px}
   .card-name{font-size:15px;margin-bottom:3px}
   .card-meta{font-size:13px;gap:8px}
+  .card-copy-btn{font-size:11px;padding:3px 5px}
   .card-arrow{font-size:13px}
 
   /* モーダル */
@@ -1062,6 +1078,7 @@ function renderList(containerId, props, pane) {
             <span style="color:#666">${p._area}</span>
           </div>
         </div>
+        <button class="card-copy-btn" type="button" title="物件名をコピー">📋</button>
         <div class="card-arrow">${arrow}</div>`;
 
       // クリックで移動
@@ -1083,6 +1100,15 @@ function renderList(containerId, props, pane) {
       card.querySelectorAll('*').forEach(child => {
         child.style.pointerEvents = 'none';
       });
+
+      const copyBtn = card.querySelector('.card-copy-btn');
+      copyBtn.style.pointerEvents = 'auto';
+      copyBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        copyPropName(p.n, copyBtn);
+      });
+      copyBtn.addEventListener('mousedown', e => e.stopPropagation());
+      copyBtn.addEventListener('dragstart', e => e.preventDefault());
 
       el.appendChild(card);
     });
@@ -1196,6 +1222,29 @@ function copyText() {
   const ta = document.getElementById('text-output-area');
   ta.select(); document.execCommand('copy');
   showToast('コピーしました');
+}
+
+async function copyPropName(name, btn) {
+  try {
+    await navigator.clipboard.writeText(name);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = name;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  const label = name.length > 24 ? name.slice(0, 24) + '…' : name;
+  showToast('「' + label + '」をコピーしました', 2000);
+  if (btn) {
+    btn.classList.add('copied');
+    btn.textContent = '✓';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.textContent = '📋';
+    }, 1200);
+  }
 }
 
 /* ============================================================
