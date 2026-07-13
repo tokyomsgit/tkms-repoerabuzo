@@ -1117,7 +1117,11 @@ function renderList(containerId, props, pane) {
 
       const nameLink = card.querySelector('.card-name-link');
       nameLink.style.pointerEvents = 'auto';
-      nameLink.addEventListener('click', e => e.stopPropagation());
+      nameLink.addEventListener('click', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        window.open(suumoSearchUrl(p.n), '_blank', 'noopener,noreferrer');
+      });
       nameLink.addEventListener('mousedown', e => e.stopPropagation());
       nameLink.addEventListener('dragstart', e => e.preventDefault());
 
@@ -1162,7 +1166,9 @@ function esc(s) {
 }
 
 function suumoSearchUrl(name) {
-  return 'https://suumo.jp/ms/chuko/tokyo/?fw=' + encodeURIComponent(name);
+  const q = encodeURIComponent(name);
+  // 検索パネルの入力欄は name="fw2" だが、検索結果URLは fw= になる
+  return 'https://suumo.jp/jj/bukken/ichiran/JJ012FC001/?bs=011&fw=' + q + '&ar=030&ta=13';
 }
 
 /* ============================================================
