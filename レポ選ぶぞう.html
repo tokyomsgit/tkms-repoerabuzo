@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>レポ選ぶぞう</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Noto Sans JP','Hiragino Sans',sans-serif;
+  font-weight:700;
+  background:#fff;
+  color:#111;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ヘッダー */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;
+  background:#fff;
+  border-bottom:3px solid #111;
+  flex-shrink:0;
+}
+.logo{font-size:22px;font-weight:900;letter-spacing:.05em;color:#111}
+.hdr-btns{display:flex;gap:10px;align-items:center}
+.import-btn{
+  padding:8px 18px;
+  background:#111;color:#fff;
+  border:none;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:14px;
+  letter-spacing:.04em;
+}
+.import-btn:hover{background:#333}
+
+/* メインレイアウト */
+.main-layout{
+  display:grid;
+  grid-template-columns:1fr 4px 1fr;
+  height:calc(100vh - 57px);
+  /* バナー表示時は自動で縮む */
+  min-height:0;
+  flex:1;
+}
+.divider{background:#111}
+
+/* 各ペイン */
+.pane{display:flex;flex-direction:column;overflow:hidden}
+
+.pane-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  border-bottom:2px solid #111;
+  flex-shrink:0;
+}
+.pane-title{font-size:18px;font-weight:900}
+.pane-title-bar{display:flex;gap:8px;align-items:center}
+.pane-count{font-size:13px;color:#555;font-weight:700}
+
+/* 掲載枠バッジ */
+.quota-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:13px;font-weight:900;
+  padding:3px 6px;color:#333;
+}
+.quota-badge .quota-current{font-size:32px;font-weight:900;line-height:1}
+.quota-badge .quota-limit{font-size:20px;color:#666}
+.quota-badge .quota-diff{font-size:20px;font-weight:900;margin-left:2px}
+.quota-diff.over{color:#cc0000}
+.quota-diff.under{color:#0055cc}
+.quota-diff.ok{color:#007700}
+
+.pane-left .pane-header{background:#FFD700}
+.pane-right .pane-header{background:#40C0F0}
+
+.text-output-btn{
+  padding:6px 14px;
+  background:#111;color:#fff;
+  border:none;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:13px;
+}
+.text-output-btn:hover{background:#333}
+
+/* 共通ツールバー */
+.shared-toolbar{
+  padding:8px 16px;
+  border-bottom:3px solid #111;
+  background:#f5f5f5;
+  flex-shrink:0;
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+}
+.toolbar-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tb-label{font-size:13px;font-weight:900;white-space:nowrap;color:#444}
+.area-select{
+  padding:5px 10px;border:2px solid #111;
+  background:#fff;font-family:inherit;font-weight:700;font-size:14px;
+  outline:none;cursor:pointer;flex:1;min-width:80px;
+}
+
+/* ソートボタン */
+.sort-btn{
+  padding:5px 12px;
+  border:2px solid #111;background:#fff;
+  font-family:inherit;font-weight:700;font-size:13px;
+  cursor:pointer;white-space:nowrap;
+  display:flex;align-items:center;gap:3px;
+}
+.sort-btn.active{background:#111;color:#fff}
+.sort-btn:hover:not(.active){background:#eee}
+.sort-dir{font-size:11px}
+
+/* テンプレ */
+.tmpl-select{
+  padding:5px 10px;border:2px solid #111;
+  background:#fff;font-family:inherit;font-weight:700;font-size:13px;
+  outline:none;cursor:pointer;
+}
+.tmpl-input{
+  padding:5px 10px;border:2px solid #111;
+  font-family:inherit;font-weight:700;font-size:13px;
+  outline:none;width:120px;
+}
+.tmpl-btn{
+  padding:5px 12px;
+  border:2px solid #111;background:#fff;
+  font-family:inherit;font-weight:700;font-size:13px;
+  cursor:pointer;white-space:nowrap;
+}
+.tmpl-btn:hover{background:#eee}
+.tmpl-btn.save{background:#FFD700;border-color:#cc9900}
+.tmpl-btn.save:hover{background:#e6c000}
+.tmpl-btn.del{color:#cc0000;border-color:#cc0000}
+.tmpl-btn.del:hover{background:#fff0f0}
+
+/* カードリスト */
+.card-list{
+  flex:1;overflow-y:auto;
+  padding:10px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.card-list::-webkit-scrollbar{width:4px}
+.card-list::-webkit-scrollbar-thumb{background:#ccc}
+
+/* 物件カード */
+.prop-card{
+  display:flex;align-items:center;
+  padding:10px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  user-select:none;
+  background:#fff;
+  transition:transform .1s, box-shadow .1s;
+  gap:6px;
+}
+.prop-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
+.prop-card:active{transform:translateY(0)}
+/* 元種別で枠色（ペイン関係なく固定） */
+.prop-card.prop-repo{border:3px solid #cc0000}
+.prop-card.prop-koma{border:3px solid #0090cc}
+
+.card-inner{flex:1;min-width:0}
+.card-name{
+  font-size:18px;font-weight:900;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:#111;margin-bottom:6px;
+}
+.card-meta{
+  display:flex;gap:14px;flex-wrap:wrap;
+  font-size:16px;font-weight:700;color:#333;
+}
+.card-meta span{white-space:nowrap}
+.card-arrow{font-size:14px;font-weight:700;color:#ccc;flex-shrink:0;}
+
+.empty-state{
+  display:flex;align-items:center;justify-content:center;
+  flex:1;font-size:14px;color:#aaa;font-weight:700;
+}
+
+/* ドラッグ＆ドロップ */
+.prop-card[draggable="true"]{cursor:grab}
+.prop-card[draggable="true"]:active{cursor:grabbing}
+.prop-card.dragging{opacity:.35;transform:scale(.97)}
+.card-list.drag-over{
+  background:rgba(0,0,0,.06);
+  outline:3px dashed #111;
+  outline-offset:-4px;
+}
+.drop-placeholder{
+  height:52px;border-radius:8px;border:3px dashed #999;
+  background:rgba(0,0,0,.04);flex-shrink:0;
+}
+
+/* テキスト出力モーダル */
+.text-modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:1000;
+  align-items:center;justify-content:center;
+}
+.text-modal-overlay.open{display:flex}
+.text-modal{
+  background:#fff;border:3px solid #111;
+  width:520px;max-width:95vw;max-height:80vh;
+  display:flex;flex-direction:column;
+}
+.text-modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:2px solid #111;flex-shrink:0;
+}
+.text-modal-title{font-size:16px;font-weight:900}
+.text-modal-close{background:none;border:none;font-size:24px;cursor:pointer;font-weight:900;line-height:1}
+.text-modal-body{flex:1;overflow-y:auto;padding:14px 16px}
+.text-output-area{
+  width:100%;min-height:200px;
+  border:2px solid #111;padding:10px;
+  font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:13px;
+  line-height:1.8;resize:vertical;outline:none;
+}
+.text-copy-btn{
+  display:block;width:100%;margin-top:10px;padding:10px;
+  background:#111;color:#fff;border:none;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:14px;
+}
+.text-copy-btn:hover{background:#333}
+
+/* インポートモーダル */
+.import-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.5);z-index:1000;
+  align-items:center;justify-content:center;
+}
+.import-overlay.open{display:flex}
+.import-modal{
+  background:#fff;border:3px solid #111;
+  width:480px;max-width:95vw;padding:20px;
+}
+.import-modal h2{font-size:18px;font-weight:900;margin-bottom:14px;border-bottom:2px solid #111;padding-bottom:8px}
+.file-row{margin-bottom:12px}
+.file-label{font-size:13px;font-weight:900;margin-bottom:4px;display:block}
+.dropzone{
+  border:2px dashed #999;padding:10px 14px;
+  text-align:center;cursor:pointer;background:#f9f9f9;
+  position:relative;font-size:13px;color:#666;font-weight:700;transition:all .15s;
+}
+.dropzone:hover,.dropzone.drag{border-color:#111;background:#f0f0f0}
+.dropzone.loaded{border-color:#009900;background:#f0fff0;color:#009900}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.run-btn{
+  width:100%;padding:12px;background:#111;color:#fff;
+  border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;margin-top:10px;
+}
+.run-btn:hover:not(:disabled){background:#333}
+.run-btn:disabled{opacity:.4;cursor:not-allowed}
+.status-line{font-size:12px;color:#666;margin-top:6px;min-height:16px;text-align:center;font-weight:700}
+.modal-close-row{text-align:right;margin-top:10px}
+.modal-close-btn{
+  padding:6px 16px;background:#fff;border:2px solid #111;
+  cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;
+}
+
+/* エリア複数選択ドロップダウン */
+.area-multi-wrap{position:relative;display:inline-block}
+.area-multi-btn{
+  padding:5px 12px;border:2px solid #111;background:#fff;
+  font-family:inherit;font-weight:700;font-size:14px;
+  cursor:pointer;display:flex;align-items:center;gap:4px;
+  min-width:120px;white-space:nowrap;
+}
+.area-multi-btn:hover{background:#eee}
+.area-dropdown{
+  display:none;position:absolute;top:100%;left:0;
+  min-width:180px;background:#fff;border:2px solid #111;
+  z-index:500;max-height:300px;overflow-y:auto;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+.area-dropdown.open{display:block}
+.area-dd-ctrl-row{
+  display:flex;gap:4px;padding:6px 8px;
+  border-bottom:2px solid #111;background:#f5f5f5;
+}
+.area-dd-ctrl{
+  padding:3px 10px;border:2px solid #111;background:#fff;
+  font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;
+}
+.area-dd-ctrl:hover{background:#eee}
+.area-dd-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;cursor:pointer;border-bottom:1px solid #eee;
+}
+.area-dd-item:hover{background:#f5f5f5}
+.area-dd-item input[type=checkbox]{
+  width:15px;height:15px;cursor:pointer;accent-color:#111;flex-shrink:0;
+}
+.area-dd-item label{
+  font-size:14px;font-weight:700;cursor:pointer;flex:1;
+}
+/* 途中保存バッジ */
+.draft-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 8px 4px 12px;
+  border:2px solid #111;background:#fff;
+  font-family:inherit;font-weight:700;font-size:13px;
+  cursor:pointer;white-space:nowrap;
+}
+.draft-badge:hover{background:#f0f0f0}
+.draft-badge.active{background:#111;color:#fff}
+.draft-del{
+  background:none;border:none;font-size:16px;font-weight:900;
+  cursor:pointer;line-height:1;padding:0;color:#cc0000;
+}
+.draft-badge.active .draft-del{color:#ff9999}
+
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#111;color:#fff;padding:10px 20px;font-size:14px;font-weight:700;
+  z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;
+}
+
+/* ============================================================
+   レスポンシブ（スマホ 680px以下）
+============================================================ */
+@media (max-width:680px){
+  .header{padding:8px 12px}
+  .logo{font-size:17px}
+  .import-btn{padding:6px 12px;font-size:13px}
+
+  /* ツールバー横スクロール */
+  .shared-toolbar{padding:6px 8px;gap:4px}
+  .toolbar-row{flex-wrap:nowrap;overflow-x:auto;gap:4px}
+  .toolbar-row::-webkit-scrollbar{height:0}
+  .tb-label{font-size:12px;flex-shrink:0}
+  .area-multi-btn{font-size:13px;min-width:90px;padding:4px 8px}
+  .tmpl-select{font-size:12px;padding:3px 6px;max-width:100px}
+  .tmpl-input{font-size:12px;width:80px;padding:3px 6px}
+  .tmpl-btn{font-size:12px;padding:4px 8px;flex-shrink:0}
+  .sort-btn{font-size:12px;padding:4px 8px;flex-shrink:0}
+  .draft-badge{font-size:12px;padding:3px 8px 3px 10px;flex-shrink:0}
+
+  /* 左右→上下2段レイアウト */
+  .main-layout{
+    grid-template-columns:1fr;
+    grid-template-rows:1fr 4px 1fr;
+    height:auto;flex:1;
+  }
+  .divider{height:4px;width:100%}
+
+  /* 各ペイン固定高 */
+  .pane{height:44vh;min-height:0}
+
+  /* ペインヘッダー */
+  .pane-header{padding:8px 10px}
+  .pane-title{font-size:15px}
+  .text-output-btn{font-size:12px;padding:5px 10px}
+
+  /* バッジ数字 */
+  .quota-badge .quota-current{font-size:22px}
+  .quota-badge .quota-limit{font-size:13px}
+  .quota-badge .quota-diff{font-size:13px}
+
+  /* カード */
+  .prop-card{padding:8px 10px;gap:4px}
+  .card-name{font-size:15px;margin-bottom:3px}
+  .card-meta{font-size:13px;gap:8px}
+  .card-arrow{font-size:13px}
+
+  /* モーダル */
+  .text-modal{width:96vw;max-height:85vh}
+  .import-modal{width:96vw;padding:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">レポ選ぶぞう</div>
+  <div class="hdr-btns">
+    <button class="import-btn" onclick="openImport()">📂 データ取込</button>
+  </div>
+</div>
+
+<!-- 共通ツールバー -->
+<div class="shared-toolbar">
+  <div class="toolbar-row">
+    <span class="tb-label">エリア：</span>
+    <div class="area-multi-wrap" id="area-multi-wrap">
+      <button class="area-multi-btn" id="area-multi-btn" onclick="toggleAreaDropdown()">
+        <span id="area-multi-label">全エリア</span>
+        <span style="font-size:11px;margin-left:6px">▼</span>
+      </button>
+      <div class="area-dropdown" id="area-dropdown">
+        <div class="area-dd-ctrl-row">
+          <button class="area-dd-ctrl" onclick="areaSelectAll()">全選択</button>
+          <button class="area-dd-ctrl" onclick="areaSelectNone()">全解除</button>
+        </div>
+        <div id="area-dd-list"></div>
+      </div>
+    </div>
+    <span class="tb-label" style="margin-left:8px">テンプレ：</span>
+    <select class="tmpl-select" id="shared-tmpl-select" onchange="loadTemplate()">
+      <option value="">選択…</option>
+    </select>
+    <input class="tmpl-input" id="shared-tmpl-name" placeholder="テンプレート名">
+    <button class="tmpl-btn save" onclick="saveTemplate()">保存</button>
+    <button class="tmpl-btn del"  onclick="deleteTemplate()">削除</button>
+  </div>
+  <div class="toolbar-row">
+    <span class="tb-label">途中保存：</span>
+    <input class="tmpl-input" id="draft-name-input" placeholder="保存名（例：港区チーム）">
+    <button class="tmpl-btn save" onclick="saveDraft()">💾 保存</button>
+    <div id="draft-list" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
+  </div>
+  <div class="toolbar-row">
+    <span class="tb-label">ソート：</span>
+    <button class="sort-btn" id="sort-pv"   onclick="setSort('pv')">PV <span class="sort-dir" id="dir-pv">↓</span></button>
+    <button class="sort-btn" id="sort-r"    onclick="setSort('r')">反響 <span class="sort-dir" id="dir-r">↓</span></button>
+    <button class="sort-btn" id="sort-p"    onclick="setSort('p')">価格 <span class="sort-dir" id="dir-p">↓</span></button>
+    <button class="sort-btn" id="sort-s"    onclick="setSort('s')">面積 <span class="sort-dir" id="dir-s">↓</span></button>
+    <button class="sort-btn" id="sort-area" onclick="setSort('area')">エリア <span class="sort-dir" id="dir-area">↑</span></button>
+  </div>
+</div>
+
+<div class="main-layout">
+
+  <!-- 左：レポ -->
+  <div class="pane pane-left">
+    <div class="pane-header">
+      <div class="pane-title-bar">
+        <span class="pane-title">レポ</span>
+        <span class="quota-badge" id="repo-quota-badge">
+          <span class="quota-current" id="repo-count">0</span>
+          <span class="quota-limit" id="repo-limit">/ —件</span>
+          <span class="quota-diff" id="repo-diff"></span>
+        </span>
+      </div>
+      <button class="text-output-btn" onclick="openTextModal('repo')">テキスト出力</button>
+    </div>
+    <div class="card-list" id="repo-list"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 右：コマ -->
+  <div class="pane pane-right">
+    <div class="pane-header">
+      <div class="pane-title-bar">
+        <span class="pane-title">コマ</span>
+        <span class="quota-badge" id="koma-quota-badge">
+          <span class="quota-current" id="koma-count">0</span>
+          <span class="quota-limit" id="koma-limit">/ —件</span>
+          <span class="quota-diff" id="koma-diff"></span>
+        </span>
+      </div>
+      <button class="text-output-btn" onclick="openTextModal('koma')">テキスト出力</button>
+    </div>
+    <div class="card-list" id="koma-list"></div>
+  </div>
+</div>
+
+<!-- テキスト出力モーダル -->
+<div class="text-modal-overlay" id="text-modal-overlay" onclick="if(event.target===this)closeTextModal()">
+  <div class="text-modal">
+    <div class="text-modal-header">
+      <span class="text-modal-title" id="text-modal-title">テキスト出力</span>
+      <button class="text-modal-close" onclick="closeTextModal()">×</button>
+    </div>
+    <div class="text-modal-body">
+      <textarea class="text-output-area" id="text-output-area" readonly></textarea>
+      <button class="text-copy-btn" onclick="copyText()">📋 コピー</button>
+      <button class="text-copy-btn" onclick="downloadTxt()" style="margin-top:6px;background:#1a7a1a">💾 物件リスト.txt をダウンロード</button>
+      <button class="text-copy-btn" onclick="sendMail()" style="margin-top:6px;background:#1a56a0">📧 メール作成（コピー＆Gmail開く）</button>
+    </div>
+  </div>
+</div>
+
+<!-- データ取込モーダル -->
+<div class="import-overlay" id="import-overlay" onclick="if(event.target===this)closeImport()">
+  <div class="import-modal">
+    <h2>📂 データ取込</h2>
+    <div class="file-row">
+      <label class="file-label">① コマ掲載中CSV</label>
+      <div class="dropzone" id="dz-koma">
+        <input type="file" accept=".csv" onchange="onFile('koma',this)">
+        <span id="dz-koma-text">クリックまたはドロップ</span>
+      </div>
+    </div>
+    <div class="file-row">
+      <label class="file-label">② レポ掲載中CSV</label>
+      <div class="dropzone" id="dz-repo">
+        <input type="file" accept=".csv" onchange="onFile('repo',this)">
+        <span id="dz-repo-text">クリックまたはドロップ</span>
+      </div>
+    </div>
+    <div class="file-row">
+      <label class="file-label">③ 反響一覧CSV</label>
+      <div class="dropzone" id="dz-rep">
+        <input type="file" accept=".csv" onchange="onFile('rep',this)">
+        <span id="dz-rep-text">クリックまたはドロップ</span>
+      </div>
+    </div>
+    <button class="run-btn" id="run-btn" disabled onclick="runImport()">取込・更新</button>
+    <div class="status-line" id="status-line"></div>
+    <div class="modal-close-row">
+      <button class="modal-close-btn" onclick="closeImport()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   Supabase
+============================================================ */
+const SUPABASE_URL = 'https://rtpugbilekylwgycglza.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHVnYmlsZWt5bHdneWNnbHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTY3MzksImV4cCI6MjA5NjA5MjczOX0.UM9TH6HGuAyfFdTkIqVyFawMsJDSobHytumgP2fl7EU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   状態
+============================================================ */
+let repoProps = [];
+let komaProps = [];
+let movedToKoma = new Set();
+let movedToRepo = new Set();
+
+// ソート状態（レポ・コマ共通）
+const sortState = { key: 'pv', dir: 'desc' };
+
+// テンプレートキャッシュ: { repo: {name: areaValue}, koma: {name: areaValue} }
+let templates = { repo: {}, koma: {} };
+
+const AREA_NORM = {
+  '世田谷': '世田谷区',   // 末尾数字なし→世田谷区（エラー検出対象）
+  // 世田谷区1・世田谷区2 はCSVにそのまま入っている前提
+};
+const MADORI_MAP = {'1K':0,'1DK':1,'1LDK':2,'1SLDK':3,'2DK':4,'2LDK':5,'2SLDK':6,'3DK':7,'3LDK':8,'4LDK':9};
+
+// テンプレのSupabaseテーブルキー
+const TMPL_KEY_REPO = 'repoSelectApp_repo';
+const TMPL_KEY_KOMA = 'repoSelectApp_koma';
+
+/* 行政区ごとの掲載枠（コマ・レポ） */
+const QUOTA = {
+  '新宿区':    { koma: 72, repo: 18 },
+  '渋谷区':    { koma: 64, repo: 16 },
+  '港区':      { koma: 48, repo: 12 },
+  '中央区':    { koma: 40, repo: 10 },
+  '千代田区':  { koma:  8, repo:  2 },
+  '中野区':    { koma: 28, repo:  7 },
+  '杉並区':    { koma: 28, repo:  7 },
+  '世田谷区1': { koma: 16, repo:  4 },
+  '世田谷区2': { koma: 42, repo:  8 },
+  '調布市':    { koma:  8, repo:  2 },
+  '大田区':    { koma: 44, repo: 11 },
+  '品川区':    { koma: 32, repo:  8 },
+  '目黒区':    { koma: 32, repo:  8 },
+  '荒川区':    { koma: 24, repo:  6 },
+  '足立区':    { koma: 12, repo:  3 },
+  '台東区':    { koma: 32, repo:  8 },
+  '江東区':    { koma: 48, repo: 12 },
+  '墨田区':    { koma: 32, repo:  8 },
+  '豊島区':    { koma: 48, repo: 12 },
+  '北区':      { koma: 20, repo:  5 },
+  '板橋区':    { koma: 32, repo:  8 },
+  '練馬区':    { koma: 32, repo:  8 },
+  '文京区':    { koma: 28, repo:  7 },
+  '江戸川区':  { koma: 12, repo:  3 },
+  '葛飾区':    { koma:  8, repo:  2 },
+  '三鷹市':    { koma:  8, repo:  2 },
+  '武蔵野市':  { koma:  2, repo:  3 },
+};
+// 全エリア合計枠
+const QUOTA_TOTAL = { koma: 800, repo: 200 };
+
+// 世田谷区で数字なし＝エラーとして検出
+function isSetagayaError(area) {
+  return area === '世田谷区';
+}
+
+/* ============================================================
+   初期化
+============================================================ */
+async function initApp() {
+  const hasData = await loadFromStorage();
+  await loadTemplates();
+  await loadDrafts();
+  if (hasData) {
+    buildAreaSelects();
+    renderCards();
+  }
+  // 初期ソートボタン状態
+  updateSortUI();
+}
+
+/* ============================================================
+   途中保存（localStorage）
+============================================================ */
+let drafts = {};
+let currentDraftName = null;
+const DRAFT_KEY = 'repoSelectApp_drafts';
+
+async function loadDrafts() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    drafts = raw ? JSON.parse(raw) : {};
+  } catch { drafts = {}; }
+  renderDraftList();
+}
+
+function saveDraftsToLocal() {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); } catch {}
+}
+
+function renderDraftList() {
+  const el = document.getElementById('draft-list');
+  if (!el) return;
+  el.innerHTML = '';
+  Object.keys(drafts).sort().forEach(name => {
+    const badge = document.createElement('button');
+    badge.className = 'draft-badge' + (name === currentDraftName ? ' active' : '');
+    badge.innerHTML = `<span onclick="loadDraft('${esc(name)}')">${name}</span><button class="draft-del" onclick="deleteDraft(event,'${esc(name)}')">×</button>`;
+    el.appendChild(badge);
+  });
+}
+
+async function saveDraft() {
+  const input = document.getElementById('draft-name-input');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  drafts[name] = {
+    movedToKoma: [...movedToKoma],
+    movedToRepo: [...movedToRepo],
+    areas: [...selectedAreas],
+  };
+  saveDraftsToLocal();
+  currentDraftName = name;
+  input.value = '';
+  renderDraftList();
+  showToast(`「${name}」を保存しました`);
+}
+
+function loadDraft(name) {
+  const d = drafts[name];
+  if (!d) return;
+  movedToKoma = new Set(d.movedToKoma || []);
+  movedToRepo = new Set(d.movedToRepo || []);
+  selectedAreas = new Set(d.areas || []);
+  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => {
+    cb.checked = selectedAreas.size === 0 || selectedAreas.has(cb.value);
+  });
+  updateAreaLabel();
+  currentDraftName = name;
+  renderDraftList();
+  renderCards();
+  showToast(`「${name}」を復元しました`);
+}
+
+async function deleteDraft(e, name) {
+  e.stopPropagation();
+  delete drafts[name];
+  saveDraftsToLocal();
+  if (currentDraftName === name) currentDraftName = null;
+  renderDraftList();
+  showToast(`「${name}」を削除しました`);
+}
+
+async function loadFromStorage() {
+  try {
+    const { data: rows, error } = await sb
+      .from('imports').select('prop_data')
+      .order('imported_at', { ascending: false }).limit(1);
+    if (error || !rows || rows.length === 0) return false;
+    parseProps(rows[0].prop_data);
+    return true;
+  } catch(e) { console.error(e); return false; }
+}
+
+function parseProps(propData) {
+  repoProps = [];
+  komaProps = [];
+  Object.entries(propData).forEach(([area, props]) => {
+    props.forEach(p => {
+      const item = { ...p, _area: area };
+      if (p._type === 'repo') repoProps.push(item);
+      else if (p._type === 'koma') komaProps.push(item);
+      else {
+        // _typeが不明な場合はコマ扱い（旧データ互換）
+        item._type = 'koma';
+        komaProps.push(item);
+      }
+    });
+  });
+  // デバッグ：件数をトーストで確認
+  showToast(`読込完了：レポ ${repoProps.length}件 / コマ ${komaProps.length}件`);
+  checkSetagayaWarning(propData);
+}
+
+/* 世田谷区（数字なし）がデータに含まれていたら警告バナーを表示 */
+function checkSetagayaWarning(propData) {
+  const errorAreas = Object.keys(propData).filter(a => isSetagayaError(a));
+  let banner = document.getElementById('setagaya-warning');
+  if (errorAreas.length > 0) {
+    // 該当物件名を収集
+    const propNames = [];
+    errorAreas.forEach(area => {
+      (propData[area] || []).forEach(p => propNames.push(p.n));
+    });
+    const propList = propNames.length > 0
+      ? `<div style="margin-top:6px;font-size:13px;font-weight:700;color:#7a4f00">
+          該当物件（${propNames.length}件）：${propNames.slice(0,10).map(n=>`<span style="background:#ffe9a0;padding:1px 6px;margin:2px;display:inline-block">${n}</span>`).join('')}${propNames.length>10?`<span>… 他${propNames.length-10}件</span>`:''}
+         </div>`
+      : '';
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'setagaya-warning';
+      banner.style.cssText = [
+        'background:#fff3cd','border-bottom:3px solid #cc7700',
+        'color:#7a4f00','font-weight:900','font-size:14px',
+        'padding:10px 20px','flex-shrink:0'
+      ].join(';');
+      document.querySelector('.shared-toolbar').insertAdjacentElement('afterend', banner);
+    }
+    banner.innerHTML =
+      `<div style="display:flex;align-items:center;gap:10px">
+        ⚠ データに「世田谷区」（数字なし）が含まれています。CSVのエリア名を <b>世田谷区1</b> / <b>世田谷区2</b> に修正してください。
+        <button onclick="document.getElementById('setagaya-warning').remove()"
+          style="margin-left:auto;padding:4px 12px;border:2px solid #cc7700;background:#fff;
+          font-family:inherit;font-weight:900;font-size:13px;cursor:pointer">閉じる</button>
+      </div>
+      ${propList}`;
+  } else {
+    if (banner) banner.remove();
+  }
+}
+
+/* ============================================================
+   エリア複数選択（チェックボックス式）
+============================================================ */
+let selectedAreas = new Set(); // 空=全エリア
+
+function buildAreaSelects() {
+  const allAreas = [...new Set([
+    ...repoProps.map(p => p._area),
+    ...komaProps.map(p => p._area),
+  ])].sort();
+
+  const list = document.getElementById('area-dd-list');
+  list.innerHTML = '';
+  allAreas.forEach(a => {
+    const item = document.createElement('div');
+    item.className = 'area-dd-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'area-cb-' + a;
+    cb.value = a;
+    cb.checked = selectedAreas.size === 0 || selectedAreas.has(a);
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedAreas.add(a);
+      else selectedAreas.delete(a);
+      // 全部チェックなら全エリア扱い
+      if (selectedAreas.size === allAreas.length) selectedAreas.clear();
+      updateAreaLabel();
+      renderCards();
+    });
+    const lbl = document.createElement('label');
+    lbl.htmlFor = 'area-cb-' + a;
+    lbl.textContent = a;
+    item.appendChild(cb); item.appendChild(lbl);
+    list.appendChild(item);
+  });
+  updateAreaLabel();
+}
+
+function updateAreaLabel() {
+  const allAreas = [...new Set([
+    ...repoProps.map(p => p._area),
+    ...komaProps.map(p => p._area),
+  ])].sort();
+  const btn = document.getElementById('area-multi-label');
+  if (!btn) return;
+  if (selectedAreas.size === 0) {
+    btn.textContent = '全エリア';
+  } else if (selectedAreas.size === 1) {
+    btn.textContent = [...selectedAreas][0];
+  } else {
+    btn.textContent = [...selectedAreas][0] + ' 他' + (selectedAreas.size - 1) + '区';
+  }
+}
+
+function toggleAreaDropdown() {
+  const dd = document.getElementById('area-dropdown');
+  const isOpen = dd.classList.toggle('open');
+  if (isOpen) {
+    setTimeout(() => document.addEventListener('click', closeAreaDropdownOutside, { once: true }), 0);
+  }
+}
+function closeAreaDropdownOutside(e) {
+  const wrap = document.getElementById('area-multi-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('area-dropdown')?.classList.remove('open');
+  }
+}
+function areaSelectAll() {
+  selectedAreas.clear();
+  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => cb.checked = true);
+  updateAreaLabel(); renderCards();
+}
+function areaSelectNone() {
+  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => {
+    selectedAreas.add(cb.value); cb.checked = false;
+  });
+  selectedAreas.clear();
+  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => cb.checked = false);
+  updateAreaLabel(); renderCards();
+}
+
+function onSharedAreaChange() { renderCards(); }
+
+function getSharedArea() {
+  // 複数選択対応：Setを返す（空=全エリア）
+  return selectedAreas;
+}
+
+/* ============================================================
+   ソート（レポ・コマ共通）
+============================================================ */
+function setSort(key) {
+  if (sortState.key === key) {
+    sortState.dir = sortState.dir === 'desc' ? 'asc' : 'desc';
+  } else {
+    sortState.key = key;
+    sortState.dir = key === 'area' ? 'asc' : 'desc';
+  }
+  updateSortUI();
+  renderCards();
+}
+
+function updateSortUI() {
+  const keys = ['pv','r','p','s','area'];
+  keys.forEach(k => {
+    const btn = document.getElementById(`sort-${k}`);
+    const dir = document.getElementById(`dir-${k}`);
+    if (!btn || !dir) return;
+    const isActive = sortState.key === k;
+    btn.classList.toggle('active', isActive);
+    if (isActive) dir.textContent = sortState.dir === 'desc' ? '↓' : '↑';
+    else dir.textContent = k === 'area' ? '↑' : '↓';
+  });
+}
+
+function sortProps(arr) {
+  const { key, dir } = sortState;
+  const d = dir === 'desc' ? -1 : 1;
+  return [...arr].sort((a, b) => {
+    if (key === 'area') return (a._area < b._area ? -1 : a._area > b._area ? 1 : 0) * d;
+    return ((b[key] || 0) - (a[key] || 0)) * d;
+  });
+}
+
+/* ============================================================
+   テンプレート（共通化）
+============================================================ */
+async function loadTemplates() {
+  try {
+    const { data } = await sb.from('templates').select('name,areas');
+    if (!data) return;
+    templates = { repo: {}, koma: {}, shared: {} };
+    data.forEach(row => {
+      if (row.name.startsWith('repoApp_shared::')) {
+        templates.shared[row.name.slice('repoApp_shared::'.length)] = row.areas;
+      } else if (row.name.startsWith('repoApp_repo::')) {
+        templates.repo[row.name.slice('repoApp_repo::'.length)] = row.areas;
+      } else if (row.name.startsWith('repoApp_koma::')) {
+        templates.koma[row.name.slice('repoApp_koma::'.length)] = row.areas;
+      }
+    });
+    buildTmplSelects();
+  } catch(e) { console.error('loadTemplates:', e); }
+}
+
+function buildTmplSelects() {
+  const all = { ...templates.repo, ...templates.koma, ...templates.shared };
+  const sel = document.getElementById('shared-tmpl-select');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">選択…</option>';
+  Object.keys(all).sort().forEach(name => {
+    sel.innerHTML += `<option value="${esc(name)}">${name}</option>`;
+  });
+  sel.value = cur;
+}
+
+function loadTemplate() {
+  const sel = document.getElementById('shared-tmpl-select');
+  const name = sel.value;
+  if (!name) return;
+  const all = { ...templates.repo, ...templates.koma, ...templates.shared };
+  const saved = all[name]; // 配列 or 文字列
+  if (saved !== undefined) {
+    // 配列ならSet、文字列なら1要素Set、空文字なら全エリア
+    const areaArr = Array.isArray(saved) ? saved : (saved ? [saved] : []);
+    selectedAreas = new Set(areaArr);
+    // チェックボックスを更新
+    document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => {
+      cb.checked = selectedAreas.size === 0 || selectedAreas.has(cb.value);
+    });
+    updateAreaLabel();
+    renderCards();
+  }
+}
+
+async function saveTemplate() {
+  const nameInput = document.getElementById('shared-tmpl-name');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  // 選択中のエリアを配列で保存（空=全エリア）
+  const areaArr = selectedAreas.size === 0 ? [] : [...selectedAreas];
+  const dbKey = `repoApp_shared::${name}`;
+  const { error } = await sb.from('templates').upsert(
+    { name: dbKey, areas: areaArr }, { onConflict: 'name' }
+  );
+  if (error) { showToast('保存失敗: ' + error.message); return; }
+  templates.shared[name] = areaArr;
+  buildTmplSelects();
+  document.getElementById('shared-tmpl-select').value = name;
+  nameInput.value = '';
+  const label = areaArr.length === 0 ? '全エリア' : areaArr.join('・');
+  showToast(`「${name}」を保存しました（${label}）`);
+}
+
+async function deleteTemplate() {
+  const sel = document.getElementById('shared-tmpl-select');
+  const name = sel.value;
+  if (!name) return;
+  let dbKey = null;
+  if (templates.shared[name] !== undefined) dbKey = `repoApp_shared::${name}`;
+  else if (templates.repo[name]  !== undefined) dbKey = `repoApp_repo::${name}`;
+  else if (templates.koma[name]  !== undefined) dbKey = `repoApp_koma::${name}`;
+  if (dbKey) await sb.from('templates').delete().eq('name', dbKey);
+  delete templates.shared[name]; delete templates.repo[name]; delete templates.koma[name];
+  buildTmplSelects();
+  showToast(`「${name}」を削除しました`);
+}
+
+/* ============================================================
+   カード描画
+============================================================ */
+function renderCards() {
+  const areas = getSharedArea(); // Set（空=全エリア）
+
+  let repoDisplayed = [
+    ...repoProps.filter(p => !movedToKoma.has(p.n)),
+    ...komaProps.filter(p => movedToRepo.has(p.n)),
+  ].filter(p => areas.size === 0 || areas.has(p._area));
+
+  let komaDisplayed = [
+    ...komaProps.filter(p => !movedToRepo.has(p.n)),
+    ...repoProps.filter(p => movedToKoma.has(p.n)),
+  ].filter(p => areas.size === 0 || areas.has(p._area));
+
+  repoDisplayed = sortProps(repoDisplayed);
+  komaDisplayed = sortProps(komaDisplayed);
+
+  updateQuotaBadge('repo', repoDisplayed.length, areas);
+  updateQuotaBadge('koma', komaDisplayed.length, areas);
+
+  renderList('repo-list', repoDisplayed, 'repo');
+  renderList('koma-list', komaDisplayed, 'koma');
+}
+
+/* 掲載枠バッジ更新 */
+function updateQuotaBadge(pane, current, areas) {
+  document.getElementById(`${pane}-count`).textContent = current + '件';
+
+  const limitEl = document.getElementById(`${pane}-limit`);
+  const diffEl  = document.getElementById(`${pane}-diff`);
+  const badge   = document.getElementById(`${pane}-quota-badge`);
+
+  // 単一エリア選択時のみ枠数表示
+  const singleArea = areas.size === 1 ? [...areas][0] : null;
+
+  // 世田谷区（数字なし）エラー
+  if (singleArea && isSetagayaError(singleArea)) {
+    limitEl.textContent = '';
+    diffEl.textContent  = '⚠ 世田谷区1 or 2 が必要です';
+    diffEl.className    = 'quota-diff over';
+    return;
+  }
+
+  let limit;
+  if (areas.size === 0) {
+    limit = QUOTA_TOTAL[pane];
+  } else if (singleArea) {
+    limit = QUOTA[singleArea] ? QUOTA[singleArea][pane] : null;
+  } else {
+    let sum = 0;
+    [...areas].forEach(a => {
+      if (QUOTA[a]) sum += QUOTA[a][pane];
+    });
+    limit = sum > 0 ? sum : null;
+  }
+
+  if (limit == null) {
+    limitEl.textContent = '';
+    diffEl.textContent  = '枠未設定';
+    diffEl.className    = 'quota-diff over';
+    return;
+  }
+
+  limitEl.textContent = '/ ' + limit + '件';
+  const diff = current - limit;
+
+  if (diff > 0) {
+    diffEl.textContent = '+' + diff;
+    diffEl.className   = 'quota-diff over';
+  } else if (diff < 0) {
+    diffEl.textContent = String(diff);
+    diffEl.className   = 'quota-diff under';
+  } else {
+    diffEl.textContent = '✓';
+    diffEl.className   = 'quota-diff ok';
+  }
+}
+
+function renderList(containerId, props, pane) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+
+  if (props.length === 0) {
+    el.innerHTML = '<div class="empty-state">物件がありません</div>';
+  } else {
+    props.forEach(p => {
+      const isMoved = (pane === 'repo' && movedToRepo.has(p.n)) ||
+                      (pane === 'koma' && movedToKoma.has(p.n));
+      const arrow = pane === 'repo' ? '→' : '←';
+      const price = p.p ? p.p.toLocaleString() + '万' : '—';
+      const areaStr = p.s ? p.s + '㎡' : '—';
+      const pv  = p.pv !== undefined ? `<span style="color:#cc0000">PV ${p.pv}</span>` : '';
+      const rep = p.r ? '反響 ' + p.r + '件' : '';
+
+      const card = document.createElement('div');
+      // 元の種別（_type）で枠色を決定（移動しても色は変わらない）
+      const origType = p._type === 'repo' ? 'repo' : 'koma';
+      card.className = 'prop-card prop-' + origType;
+      card.draggable = true;
+      card.dataset.name = p.n;
+      card.dataset.pane = pane;
+      card.innerHTML = `
+        <div class="card-inner">
+          <div class="card-name" title="${esc(p.n)}">${p.n}</div>
+          <div class="card-meta">
+            ${pv ? `<span>${pv}</span>` : ''}
+            <span>${price}</span>
+            <span>${areaStr}</span>
+            ${rep ? `<span>${rep}</span>` : ''}
+            <span style="color:#666">${p._area}</span>
+          </div>
+        </div>
+        <div class="card-arrow">${arrow}</div>`;
+
+      // クリックで移動
+      card.addEventListener('click', () => moveCardLogic(p.n, pane));
+
+      // ドラッグ開始
+      card.addEventListener('dragstart', e => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({ name: p.n, fromPane: pane }));
+        setTimeout(() => card.classList.add('dragging'), 0);
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        document.querySelectorAll('.card-list').forEach(l => l.classList.remove('drag-over'));
+        document.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
+      });
+
+      // 子要素のpointer-eventsをなくしてドラッグを親カードに集約
+      card.querySelectorAll('*').forEach(child => {
+        child.style.pointerEvents = 'none';
+      });
+
+      el.appendChild(card);
+    });
+  }
+
+  // ドロップゾーン：_ddSetupフラグで重複登録を防ぐ
+  if (!el._ddSetup) {
+    el._ddSetup = true;
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drag-over');
+      if (!el.querySelector('.drop-placeholder')) {
+        const ph = document.createElement('div');
+        ph.className = 'drop-placeholder';
+        el.appendChild(ph);
+      }
+    });
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) {
+        el.classList.remove('drag-over');
+        el.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
+      }
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      el.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
+      try {
+        const { name, fromPane } = JSON.parse(e.dataTransfer.getData('text/plain'));
+        if (fromPane === pane) return;
+        moveCardLogic(name, fromPane);
+      } catch {}
+    });
+  }
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ============================================================
+   カード移動ロジック（クリック・D&D共通）
+============================================================ */
+function moveCardLogic(n, currentPane) {
+  if (currentPane === 'repo') {
+    if (movedToRepo.has(n)) movedToRepo.delete(n);
+    else if (movedToKoma.has(n)) movedToKoma.delete(n);
+    else movedToKoma.add(n);
+  } else {
+    if (movedToKoma.has(n)) movedToKoma.delete(n);
+    else if (movedToRepo.has(n)) movedToRepo.delete(n);
+    else movedToRepo.add(n);
+  }
+  renderCards();
+}
+
+// 後方互換（onclick属性から呼ばれる場合）
+function moveCard(name, pane) {
+  const n = name.replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  moveCardLogic(n, pane);
+}
+
+/* ============================================================
+   テキスト出力
+============================================================ */
+function openTextModal(pane) {
+  const areas = getSharedArea();
+  let props, title;
+  if (pane === 'repo') {
+    props = sortProps([
+      ...repoProps.filter(p => !movedToKoma.has(p.n)),
+      ...komaProps.filter(p => movedToRepo.has(p.n)),
+    ].filter(p => areas.size === 0 || areas.has(p._area)));
+    title = 'レポ テキスト出力';
+  } else {
+    props = sortProps([
+      ...komaProps.filter(p => !movedToRepo.has(p.n)),
+      ...repoProps.filter(p => movedToKoma.has(p.n)),
+    ].filter(p => areas.size === 0 || areas.has(p._area)));
+    title = 'コマ テキスト出力';
+  }
+  const lines = props.map(p => p.n);
+  document.getElementById('text-modal-title').textContent = title + '（' + props.length + '件）';
+  document.getElementById('text-output-area').value = lines.join('\n');
+  document.getElementById('text-modal-overlay').classList.add('open');
+}
+function closeTextModal() { document.getElementById('text-modal-overlay').classList.remove('open'); }
+function sendMail() {
+  const ta      = document.getElementById('text-output-area');
+  const to      = encodeURIComponent('tokyomsgpt2@gmail.com');
+  const subject = encodeURIComponent('物件リスト');
+
+  // ① テキストをクリップボードにコピー
+  navigator.clipboard.writeText(ta.value).catch(() => {
+    // clipboard APIが使えない場合はselect方式
+    ta.select();
+    document.execCommand('copy');
+  });
+
+  // ② Gmail作成画面を開く（本文は空・宛先と件名だけ自動入力）
+  window.open(
+    `https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}`,
+    '_blank'
+  );
+
+  showToast('📋 コピーしました！Gmailに貼り付けて送信してください', 4000);
+}
+
+function copyText() {
+  const ta = document.getElementById('text-output-area');
+  ta.select(); document.execCommand('copy');
+  showToast('コピーしました');
+}
+
+/* ============================================================
+   データ取込
+============================================================ */
+const files = { koma: null, repo: null, rep: null };
+function openImport()  { document.getElementById('import-overlay').classList.add('open'); }
+function closeImport() { document.getElementById('import-overlay').classList.remove('open'); }
+function onFile(key, input) {
+  const file = input.files[0]; if (!file) return;
+  files[key] = file;
+  document.getElementById('dz-' + key).classList.add('loaded');
+  document.getElementById('dz-' + key + '-text').textContent = `✓ ${file.name}`;
+
+  const label = key === 'koma' ? 'コマ' : key === 'repo' ? 'レポ' : '反響';
+
+  // デバッグ欄を確実に作成
+  let dbg = document.getElementById('csv-debug');
+  if (!dbg) {
+    dbg = document.createElement('div');
+    dbg.id = 'csv-debug';
+    dbg.style.cssText = 'margin-top:10px;font-size:12px;font-weight:700;line-height:2;padding:8px 10px;background:#f0f0f0;border:2px solid #999;word-break:break-all';
+    // run-btnの直前に挿入
+    document.getElementById('run-btn').insertAdjacentElement('beforebegin', dbg);
+  }
+  const rowId = 'csv-dbg-' + key;
+  let row = document.getElementById(rowId);
+  if (!row) { row = document.createElement('div'); row.id = rowId; dbg.appendChild(row); }
+  row.textContent = `${label}CSV：読込中…`;
+
+  function showResult(encoding, fields, rowCount) {
+    let ok;
+    if (key === 'rep') {
+      // 反響CSVは行政区・物件名・反響日で判定
+      ok = fields.some(f => f.includes('行政区') || f.includes('市郡区'))
+        && fields.some(f => f.includes('物件名'))
+        && fields.some(f => f.includes('反響日'));
+    } else {
+      // コマ・レポはエリア・物件名で判定
+      ok = fields.some(f => f.includes('エリア')) && fields.some(f => f.includes('物件名'));
+    }
+    const icon = ok ? '✅' : '❌';
+    row.innerHTML = `${icon} <b>${label}CSV</b> [${encoding}] ${rowCount}行<br>列名：${fields.map(f=>`<span style="background:#fff;border:1px solid #999;padding:0 4px;margin:1px;display:inline-block">${f}</span>`).join('')}`;
+    row.style.color = ok ? '#007700' : '#cc0000';
+  }
+
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true, encoding: 'UTF-8', preview: 5,
+    complete: r => {
+      const fields = r.meta?.fields || [];
+      let ok;
+      if (key === 'rep') {
+        ok = fields.some(f => f.includes('行政区') || f.includes('市郡区'))
+          && fields.some(f => f.includes('物件名'))
+          && fields.some(f => f.includes('反響日'));
+      } else {
+        ok = fields.some(f => f.includes('エリア')) && fields.some(f => f.includes('物件名'));
+      }
+      if (ok) {
+        showResult('UTF-8', fields, r.data.length);
+      } else {
+        Papa.parse(file, {
+          header: true, skipEmptyLines: true, encoding: 'Shift_JIS', preview: 5,
+          complete: r2 => {
+            const f2 = r2.meta?.fields || [];
+            showResult('Shift-JIS', f2, r2.data.length);
+          },
+          error: () => showResult('UTF-8', fields, r.data.length)
+        });
+      }
+      document.getElementById('run-btn').disabled = !(files.koma && files.repo && files.rep);
+    },
+    error: () => {
+      row.textContent = `❌ ${label}CSV：読込エラー`;
+      row.style.color = '#cc0000';
+    }
+  });
+}
+function setStatus(msg) { document.getElementById('status-line').textContent = msg; }
+
+async function runImport() {
+  document.getElementById('run-btn').disabled = true;
+  setStatus('ファイルを読み込み中…');
+  try {
+    const [komaRows, repoRows, repRows] = await Promise.all([
+      parseCSVFile(files.koma), parseCSVFile(files.repo), parseRepCSV(files.rep)
+    ]);
+    setStatus('データを処理中…');
+    const propsRaw = [
+      ...komaRows.map(r => ({ ...r, _type: 'koma' })),
+      ...repoRows.map(r => ({ ...r, _type: 'repo' })),
+    ];
+    const props = propsRaw.filter(r => r['エリア'] && r['物件名']);
+    // フィルタ落ちチェック
+    const komaRaw = propsRaw.filter(r => r._type === 'koma');
+    const repoRaw = propsRaw.filter(r => r._type === 'repo');
+    const komaFiltered = props.filter(r => r._type === 'koma');
+    const repoFiltered = props.filter(r => r._type === 'repo');
+    if (komaFiltered.length === 0 && komaRaw.length > 0) {
+      // コマCSVのカラム名を確認してエラー表示
+      const komaKeys = Object.keys(komaRaw[0] || {}).join('、');
+      setStatus(`⚠ コマCSVの列名が違う可能性があります。検出列：${komaKeys}`);
+      showToast(`⚠ コマ0件：列名を確認してください`, 8000);
+    }
+    props.forEach(r => {
+      r._price = parseFloat((r['価格'] || '').replace(/万円|,/g, '').trim()) || 0;
+      r._area  = parseFloat((r['専有面積'] || '').replace('㎡', '').trim()) || 0;
+      r._pv    = parseFloat(r['PV直近1週']) || 0;
+      r._pa    = parseFloat(r['PV全期間']) || 0;
+      r['エリア'] = (r['エリア'] || '').trim();
+      // 世田谷区1・世田谷区2 は末尾数字を保持、それ以外は末尾数字を除去
+      if (!r['エリア'].match(/^世田谷区[12]$/)) {
+        r['エリア'] = r['エリア'].replace(/\d+$/, '').trim();
+      }
+      r['エリア'] = AREA_NORM[r['エリア']] || r['エリア'];
+    });
+    const propKey = r => (r['物件名'] || '').trim();
+    const nameCount = {};
+    props.forEach(r => { const k = propKey(r); nameCount[k] = (nameCount[k] || 0) + 1; });
+    const nameToArea = {};
+    props.forEach(r => { const k = propKey(r); if (nameCount[k] === 1) nameToArea[k] = r['エリア']; });
+    const propSet = new Set(props.map(r => r['エリア'] + '|' + propKey(r)));
+    const validRep = repRows.filter(r => {
+      if (!r['行政区'] && r['市郡区']) r['行政区'] = r['市郡区'];
+      return r['行政区'] && r['物件名'] && r['反響日'];
+    });
+    validRep.forEach(r => { r._date = parseRepDate(r['反響日']); r['行政区'] = AREA_NORM[r['行政区']] || r['行政区']; });
+    const endDate = new Date(Math.max(...validRep.map(r => r._date || 0)));
+    const startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 6); startDate.setHours(0,0,0,0);
+    const week = validRep.filter(r => r._date && r._date >= startDate && r._date <= endDate);
+    const expanded = [];
+    week.forEach(r => {
+      const name = r['物件名'] || '';
+      if (name.includes('\n')) name.split('\n').forEach(n => { const c = n.trim().replace(/\s+\d[\d,.]*$/, ''); if (c) expanded.push({ ...r, '物件名': c }); });
+      else expanded.push(r);
+    });
+    expanded.forEach(r => {
+      const area = r['行政区'], name = r['物件名'];
+      const directKey = area + '|' + name;
+      if (propSet.has(directKey)) { r._resolved_area = area; r._resolved_name = name; return; }
+      const roomMatch = [...propSet].find(k => k.startsWith(area + '|' + name + ' '));
+      if (roomMatch) { r._resolved_area = area; r._resolved_name = roomMatch.split('|')[1]; return; }
+      const clean = name.replace(/\s+\d+[\-\d]*$/, '');
+      if (clean !== name) {
+        if (propSet.has(area + '|' + clean)) { r._resolved_area = area; r._resolved_name = clean; return; }
+        const cleanRoom = [...propSet].find(k => k.startsWith(area + '|' + clean + ' '));
+        if (cleanRoom) { r._resolved_area = area; r._resolved_name = cleanRoom.split('|')[1]; return; }
+        if (nameToArea[clean]) { r._resolved_area = nameToArea[clean]; r._resolved_name = clean; return; }
+      }
+      if (nameToArea[name]) { r._resolved_area = nameToArea[name]; r._resolved_name = name; return; }
+      r._resolved_area = null; r._resolved_name = null;
+    });
+    const matched = expanded.filter(r => r._resolved_area);
+    const propRepMap = {};
+    matched.forEach(r => { const k = r._resolved_area + '|' + r._resolved_name; propRepMap[k] = (propRepMap[k] || 0) + 1; });
+    const areas = [...new Set(props.map(r => r['エリア']))].sort();
+    const newPropData = {};
+    areas.forEach(area => {
+      const g = props.filter(r => r['エリア'] === area);
+      newPropData[area] = g.map(r => ({
+        n: propKey(r), p: r._price, m: r['間取り'] || '—',
+        s: r._area, pv: r._pv, pa: r._pa,
+        r: propRepMap[area + '|' + propKey(r)] || 0,
+        _type: r._type || 'koma', addr: '—',
+      }));
+    });
+    setStatus('Supabaseへ保存中…');
+    const { error } = await sb.from('imports').insert({
+      period_label: '直近1週間', data: {}, pv_data: {}, prop_data: newPropData, imported_by: '取込',
+    });
+    if (error) throw error;
+    movedToKoma.clear(); movedToRepo.clear();
+    parseProps(newPropData);
+    buildAreaSelects();
+    renderCards();
+    const komaCount = props.filter(r => r._type === 'koma').length;
+    const repoCount = props.filter(r => r._type === 'repo').length;
+    setStatus(`✓ 完了（コマ${komaCount}件 / レポ${repoCount}件）`);
+    showToast(`完了：コマ${komaCount}件 / レポ${repoCount}件`, 5000);
+  } catch(e) { setStatus('エラー: ' + e.message); console.error(e); }
+  document.getElementById('run-btn').disabled = false;
+}
+
+/* ============================================================
+   ユーティリティ
+============================================================ */
+function parseCSVFile(file) {
+  // 正しいヘッダー列名
+  const EXPECTED_HEADERS = ['エリア','物件名','物件コード','住所','価格','間取り','専有面積','PV全期間','PV直近1週','反響合計'];
+
+  return new Promise((res, rej) => {
+    // まずShift-JIS・UTF-8両対応で全行読む
+    const tryParse = (encoding, cb) => {
+      Papa.parse(file, {
+        header: false, skipEmptyLines: true, encoding,
+        complete: r => cb(r.data),
+        error: e => rej(e)
+      });
+    };
+
+    const buildResult = (rows) => {
+      if (rows.length === 0) return [];
+      // 1行目にエリア・物件名が含まれているか確認
+      const firstRow = rows[0];
+      const hasHeader = firstRow.includes('エリア') && firstRow.includes('物件名');
+      let dataRows, headers;
+      if (hasHeader) {
+        // 正常：1行目がヘッダー
+        headers = firstRow;
+        dataRows = rows.slice(1);
+      } else {
+        // 異常：1行目がデータ → 固定ヘッダーを使用し1行目もデータとして扱う
+        // 列数に合わせてEXPECTED_HEADERSを当てはめ、余りは無視
+        headers = EXPECTED_HEADERS.slice(0, firstRow.length);
+        dataRows = rows; // 1行目もデータ
+      }
+      return dataRows.map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+        return obj;
+      });
+    };
+
+    tryParse('UTF-8', rows => {
+      const result = buildResult(rows);
+      if (result.length > 0 && result[0]['エリア'] && result[0]['物件名']) {
+        res(result);
+      } else {
+        // Shift-JISで再試行
+        tryParse('Shift_JIS', rows2 => {
+          res(buildResult(rows2));
+        });
+      }
+    });
+  });
+}
+function parseRepCSV(file) {
+  return new Promise((res, rej) => {
+    Papa.parse(file, { header: true, skipEmptyLines: true, encoding: 'UTF-8', complete: r => {
+      const h = r.meta?.fields || [];
+      if (h.some(f => f.includes('行政区') || f.includes('物件名'))) res(r.data);
+      else Papa.parse(file, { header: true, skipEmptyLines: true, encoding: 'Shift_JIS', complete: r2 => res(r2.data), error: e => rej(e) });
+    }, error: e => rej(e) });
+  });
+}
+function parseRepDate(s) {
+  try { const d = new Date(String(s).trim()); if (!isNaN(d)) return d; return null; } catch { return null; }
+}
+function showToast(msg, duration=3500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, duration);
+}
+
+initApp();
+</script>
+</body>
+</html>
