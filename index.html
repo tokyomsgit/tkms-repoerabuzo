@@ -1072,9 +1072,10 @@ function renderList(containerId, props, pane) {
       card.draggable = true;
       card.dataset.name = p.n;
       card.dataset.pane = pane;
+      const suumoKw = suumoSearchKeyword(p.n);
       card.innerHTML = `
         <div class="card-inner">
-          <a class="card-name card-name-link" href="${suumoSearchUrl(p.n)}" target="_blank" rel="noopener noreferrer" title="SUUMOで「${esc(p.n)}」を検索">${p.n}</a>
+          <a class="card-name card-name-link" href="${suumoSearchUrl(p.n)}" target="_blank" rel="noopener noreferrer" title="SUUMOで「${esc(suumoKw)}」を検索">${p.n}</a>
           <div class="card-meta">
             ${pv ? `<span>${pv}</span>` : ''}
             <span>${price}</span>
@@ -1165,8 +1166,15 @@ function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function suumoSearchKeyword(name) {
+  return (name || '').trim()
+    .replace(/\s*[\d\-]+号(?:室)?$/u, '')
+    .replace(/\s+[A-Za-z]?[\d\-]+$/u, '')
+    .trim();
+}
+
 function suumoSearchUrl(name) {
-  const q = encodeURIComponent(name);
+  const q = encodeURIComponent(suumoSearchKeyword(name));
   // 検索パネルの入力欄は name="fw2" だが、検索結果URLは fw= になる
   return 'https://suumo.jp/jj/bukken/ichiran/JJ012FC001/?bs=011&fw=' + q + '&ar=030&ta=13';
 }
