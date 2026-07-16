@@ -247,6 +247,21 @@ body{
 }
 .text-copy-btn:hover{background:#333}
 
+.mail-area-row{
+  margin-top:10px;padding:10px 12px;
+  border:2px solid #111;background:#f5f5f5;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.mail-area-label{font-size:13px;font-weight:900;white-space:nowrap}
+.mail-area-options{display:flex;gap:14px;flex-wrap:wrap}
+.mail-area-option{
+  display:flex;align-items:center;gap:5px;
+  font-size:14px;font-weight:700;cursor:pointer;
+}
+.mail-area-option input{
+  width:16px;height:16px;accent-color:#111;cursor:pointer;
+}
+
 /* インポートモーダル */
 .import-overlay{
   display:none;position:fixed;inset:0;
@@ -491,7 +506,14 @@ body{
     <div class="text-modal-body">
       <textarea class="text-output-area" id="text-output-area" readonly></textarea>
       <button class="text-copy-btn" onclick="copyText()">📋 コピー</button>
-      <button class="text-copy-btn" onclick="downloadTxt()" style="margin-top:6px;background:#1a7a1a">💾 物件リスト.txt をダウンロード</button>
+      <div class="mail-area-row">
+        <span class="mail-area-label">送信エリア <span style="color:#cc0000">*</span></span>
+        <div class="mail-area-options">
+          <label class="mail-area-option"><input type="radio" name="mail-area" value="城東">城東</label>
+          <label class="mail-area-option"><input type="radio" name="mail-area" value="城西">城西</label>
+          <label class="mail-area-option"><input type="radio" name="mail-area" value="城南">城南</label>
+        </div>
+      </div>
       <button class="text-copy-btn" onclick="sendMail()" style="margin-top:6px;background:#1a56a0">📧 メール作成（コピー＆Gmail開く）</button>
     </div>
   </div>
@@ -1223,13 +1245,26 @@ function openTextModal(pane) {
   const lines = props.map(p => p.n);
   document.getElementById('text-modal-title').textContent = title + '（' + props.length + '件）';
   document.getElementById('text-output-area').value = lines.join('\n');
+  document.querySelectorAll('input[name="mail-area"]').forEach(r => { r.checked = false; });
   document.getElementById('text-modal-overlay').classList.add('open');
 }
 function closeTextModal() { document.getElementById('text-modal-overlay').classList.remove('open'); }
+
+function getMailArea() {
+  const el = document.querySelector('input[name="mail-area"]:checked');
+  return el ? el.value : null;
+}
+
 function sendMail() {
+  const area = getMailArea();
+  if (!area) {
+    showToast('送信エリア（城東・城西・城南）を選択してください', 3500);
+    return;
+  }
+
   const ta      = document.getElementById('text-output-area');
   const to      = encodeURIComponent('tokyomsgpt2@gmail.com');
-  const subject = encodeURIComponent('物件リスト');
+  const subject = encodeURIComponent('物件リスト(' + area + ')');
 
   // ① テキストをクリップボードにコピー
   navigator.clipboard.writeText(ta.value).catch(() => {
