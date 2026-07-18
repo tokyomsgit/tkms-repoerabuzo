@@ -28,7 +28,11 @@ body{
   flex-shrink:0;
 }
 .logo{font-size:22px;font-weight:900;letter-spacing:.05em;color:#111}
-.hdr-btns{display:flex;gap:10px;align-items:center}
+.header-left{display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0}
+.header-meta{display:flex;flex-direction:column;gap:2px;font-weight:700;line-height:1.4}
+#import-time-label{font-size:13px;color:#333}
+#import-freq-label{font-size:11px;color:#888}
+.hdr-btns{display:flex;gap:10px;align-items:center;flex-shrink:0}
 .import-btn{
   padding:8px 18px;
   background:#111;color:#fff;
@@ -376,8 +380,11 @@ body{
    レスポンシブ（スマホ 680px以下）
 ============================================================ */
 @media (max-width:680px){
-  .header{padding:8px 12px}
+  .header{padding:8px 12px;flex-wrap:wrap;gap:8px}
+  .header-left{flex-direction:column;align-items:flex-start;gap:4px}
   .logo{font-size:17px}
+  #import-time-label{font-size:12px}
+  #import-freq-label{font-size:10px}
   .import-btn{padding:6px 12px;font-size:13px}
 
   /* ツールバー横スクロール */
@@ -430,7 +437,13 @@ body{
 <body>
 
 <div class="header">
-  <div class="logo">レポ選ぶぞう</div>
+  <div class="header-left">
+    <div class="logo">レポ選ぶぞう</div>
+    <div class="header-meta">
+      <span id="import-time-label">取込：—</span>
+      <span id="import-freq-label">更新：Drive 15分ごと / 画面反映 3分ごと</span>
+    </div>
+  </div>
   <div class="hdr-btns">
     <button class="import-btn drive-hdr-btn" onclick="importFromDrive()">☁️ Driveから取込</button>
     <button class="import-btn" onclick="openImport()">📂 データ取込</button>
@@ -623,6 +636,39 @@ let googleTokenClient = null;
 let googleAccessToken = null;
 let pendingDriveImport = false;
 let driveImportRunning = false;
+let lastImportAt = null;
+const AUTO_SYNC_MS = 3 * 60 * 1000;
+const DRIVE_SYNC_INTERVAL_MIN = 15;
+
+function formatImportTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate())
+    + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function updateImportMetaDisplay(importedAt, importedBy) {
+  const timeEl = document.getElementById('import-time-label');
+  const freqEl = document.getElementById('import-freq-label');
+  if (!timeEl || !freqEl) return;
+
+  if (!importedAt) {
+    timeEl.textContent = '取込：未取込';
+  } else {
+    const src = importedBy ? '（' + importedBy + '）' : '';
+    timeEl.textContent = '取込：' + formatImportTime(importedAt) + src;
+  }
+  freqEl.textContent = '更新：Drive ' + DRIVE_SYNC_INTERVAL_MIN + '分ごと / 画面反映 '
+    + (AUTO_SYNC_MS / 60000) + '分ごと';
+}
+
+function applyLatestImport(row, silent) {
+  lastImportAt = row.imported_at;
+  updateImportMetaDisplay(row.imported_at, row.imported_by);
+  parseProps(row.prop_data, silent);
+}
 
 /* ============================================================
    状態
@@ -691,6 +737,7 @@ function isSetagayaError(area) {
 ============================================================ */
 async function initApp() {
   loadGoogleIdentityScript();
+  updateImportMetaDisplay(null);
   const hasData = await loadFromStorage();
   await loadTemplates();
   await loadDrafts();
@@ -700,6 +747,7 @@ async function initApp() {
   }
   // 初期ソートボタン状態
   updateSortUI();
+  startAutoSyncPoll();
 }
 
 /* ============================================================
@@ -777,15 +825,38 @@ async function deleteDraft(e, name) {
 async function loadFromStorage() {
   try {
     const { data: rows, error } = await sb
-      .from('imports').select('prop_data')
+      .from('imports').select('prop_data, imported_at, imported_by')
       .order('imported_at', { ascending: false }).limit(1);
-    if (error || !rows || rows.length === 0) return false;
-    parseProps(rows[0].prop_data);
+    if (error || !rows || rows.length === 0) {
+      updateImportMetaDisplay(null);
+      return false;
+    }
+    applyLatestImport(rows[0]);
     return true;
   } catch(e) { console.error(e); return false; }
 }
 
-function parseProps(propData) {
+async function checkForAutoSync() {
+  try {
+    const { data: rows, error } = await sb
+      .from('imports').select('prop_data, imported_at, imported_by')
+      .order('imported_at', { ascending: false }).limit(1);
+    if (error || !rows?.length) return;
+    if (lastImportAt && rows[0].imported_at !== lastImportAt) {
+      applyLatestImport(rows[0], true);
+      buildAreaSelects();
+      renderCards();
+      const src = rows[0].imported_by === 'Drive自動取込' ? 'Drive自動取込' : 'データ更新';
+      showToast('最新データを反映しました（' + src + '）', 4000);
+    }
+  } catch (e) { console.error(e); }
+}
+
+function startAutoSyncPoll() {
+  setInterval(checkForAutoSync, AUTO_SYNC_MS);
+}
+
+function parseProps(propData, silent) {
   repoProps = [];
   komaProps = [];
   Object.entries(propData).forEach(([area, props]) => {
@@ -800,8 +871,7 @@ function parseProps(propData) {
       }
     });
   });
-  // デバッグ：件数をトーストで確認
-  showToast(`読込完了：レポ ${repoProps.length}件 / コマ ${komaProps.length}件`);
+  if (!silent) showToast(`読込完了：レポ ${repoProps.length}件 / コマ ${komaProps.length}件`);
   checkSetagayaWarning(propData);
 }
 
@@ -1667,6 +1737,16 @@ function onFile(key, input) {
 }
 function setStatus(msg) { document.getElementById('status-line').textContent = msg; }
 
+function isHeaderLikeRow(r) {
+  const n = String(r['物件名'] || '').replace(/^\uFEFF/, '').trim();
+  const a = String(r['エリア'] || '').replace(/^\uFEFF/, '').trim();
+  return n === '物件名' || a === 'エリア';
+}
+
+function isValidPropRow(r) {
+  return r['エリア'] && r['物件名'] && !isHeaderLikeRow(r);
+}
+
 async function runImport() {
   document.getElementById('run-btn').disabled = true;
   setStatus('ファイルを読み込み中…');
@@ -1679,7 +1759,7 @@ async function runImport() {
       ...komaRows.map(r => ({ ...r, _type: 'koma' })),
       ...repoRows.map(r => ({ ...r, _type: 'repo' })),
     ];
-    const props = propsRaw.filter(r => r['エリア'] && r['物件名']);
+    const props = propsRaw.filter(isValidPropRow);
     // フィルタ落ちチェック
     const komaRaw = propsRaw.filter(r => r._type === 'koma');
     const repoRaw = propsRaw.filter(r => r._type === 'repo');
@@ -1758,6 +1838,8 @@ async function runImport() {
       period_label: '直近1週間', data: {}, pv_data: {}, prop_data: newPropData, imported_by: '取込',
     });
     if (error) throw error;
+    lastImportAt = new Date().toISOString();
+    updateImportMetaDisplay(lastImportAt, '取込');
     movedToKoma.clear(); movedToRepo.clear();
     parseProps(newPropData);
     buildAreaSelects();
@@ -1789,25 +1871,23 @@ function parseCSVFile(file) {
 
     const buildResult = (rows) => {
       if (rows.length === 0) return [];
-      // 1行目にエリア・物件名が含まれているか確認
+      const cellNorm = c => String(c).replace(/^\uFEFF/, '').trim();
       const firstRow = rows[0];
-      const hasHeader = firstRow.includes('エリア') && firstRow.includes('物件名');
+      const hasHeader = firstRow.some(c => cellNorm(c) === 'エリア')
+        && firstRow.some(c => cellNorm(c) === '物件名');
       let dataRows, headers;
       if (hasHeader) {
-        // 正常：1行目がヘッダー
-        headers = firstRow;
+        headers = firstRow.map(c => cellNorm(c));
         dataRows = rows.slice(1);
       } else {
-        // 異常：1行目がデータ → 固定ヘッダーを使用し1行目もデータとして扱う
-        // 列数に合わせてEXPECTED_HEADERSを当てはめ、余りは無視
         headers = EXPECTED_HEADERS.slice(0, firstRow.length);
-        dataRows = rows; // 1行目もデータ
+        dataRows = rows;
       }
       return dataRows.map(row => {
         const obj = {};
         headers.forEach((h, i) => { obj[h] = row[i] || ''; });
         return obj;
-      });
+      }).filter(r => !isHeaderLikeRow(r));
     };
 
     tryParse('UTF-8', rows => {
