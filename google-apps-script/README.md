@@ -22,7 +22,7 @@
 
 1. 関数 `testSyncFromDrive` を実行
 2. **実行ログ** に「同期完了」と出れば OK
-3. Supabase の `imports` テーブルに `imported_by = Drive自動取込` の行が増えているか確認
+3. Supabase の `repoerabuzo_imports` テーブルに `imported_by = Drive自動取込` の行が増えているか確認
 
 ### 4. 定期実行を登録
 
@@ -62,5 +62,5 @@
 ## トラブルシューティング
 
 - **Drive にファイルがありません** → フォルダ ID とファイル名を確認
-- **Supabase エラー 401/403** → anon キーと RLS ポリシーを確認（`imports` への insert 許可）
+- **Supabase エラー 401/403** → anon キーと RLS ポリシーを確認（`repoerabuzo_imports` への insert 許可）
 - **変更が反映されない** → `testSyncFromDrive` を手動実行してログを確認

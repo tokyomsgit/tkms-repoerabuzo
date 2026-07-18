@@ -18,14 +18,15 @@ const CONFIG = {
   },
   EXPECTED_HEADERS: ['エリア', '物件名', '物件コード', '住所', '価格', '間取り', '専有面積', 'PV全期間', 'PV直近1週', '反響合計'],
   AREA_NORM: { '世田谷': '世田谷区' },
+  IMPORTS_TABLE: 'repoerabuzo_imports',
 };
 
 /** 初回のみ実行: Script Properties に Supabase 設定を保存 */
 function setupConfig() {
   const props = PropertiesService.getScriptProperties();
   props.setProperties({
-    SUPABASE_URL: 'https://rtpugbilekylwgycglza.supabase.co',
-    SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHVnYmlsZWt5bHdneWNnbHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTY3MzksImV4cCI6MjA5NjA5MjczOX0.UM9TH6HGuAyfFdTkIqVyFawMsJDSobHytumgP2fl7EU',
+    SUPABASE_URL: 'https://bypticegujbxgvcctkju.supabase.co',
+    SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5cHRpY2VndWpieGd2Y2N0a2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NzA3OTUsImV4cCI6MjA5NzA0Njc5NX0.4fzXRVUYKzkDDmOzEiq3PP0Wk8ZujdD7AJAYivnWgbc',
     DRIVE_FOLDER_ID: CONFIG.FOLDER_ID,
     WEBAPP_TOKEN: Utilities.getUuid(),
   });
@@ -138,7 +139,7 @@ function insertToSupabase(url, key, propData) {
     imported_by: 'Drive自動取込',
   };
 
-  const res = UrlFetchApp.fetch(url + '/rest/v1/imports', {
+  const res = UrlFetchApp.fetch(url + '/rest/v1/' + CONFIG.IMPORTS_TABLE, {
     method: 'post',
     headers: {
       apikey: key,

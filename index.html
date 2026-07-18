@@ -540,8 +540,10 @@ body{
 /* ============================================================
    Supabase
 ============================================================ */
-const SUPABASE_URL = 'https://rtpugbilekylwgycglza.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHVnYmlsZWt5bHdneWNnbHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTY3MzksImV4cCI6MjA5NjA5MjczOX0.UM9TH6HGuAyfFdTkIqVyFawMsJDSobHytumgP2fl7EU';
+const SUPABASE_URL = 'https://bypticegujbxgvcctkju.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5cHRpY2VndWpieGd2Y2N0a2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NzA3OTUsImV4cCI6MjA5NzA0Njc5NX0.4fzXRVUYKzkDDmOzEiq3PP0Wk8ZujdD7AJAYivnWgbc';
+const SB_IMPORTS = 'repoerabuzo_imports';
+const SB_TEMPLATES = 'repoerabuzo_templates';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* Apps Script Webアプリ（testSyncFromDrive 相当をアプリから実行） */
@@ -735,7 +737,7 @@ async function deleteDraft(e, name) {
 async function loadFromStorage() {
   try {
     const { data: rows, error } = await sb
-      .from('imports').select('prop_data, imported_at, imported_by')
+      .from(SB_IMPORTS).select('prop_data, imported_at, imported_by')
       .order('imported_at', { ascending: false }).limit(1);
     if (error || !rows || rows.length === 0) {
       updateImportMetaDisplay(null);
@@ -749,7 +751,7 @@ async function loadFromStorage() {
 async function checkForAutoSync() {
   try {
     const { data: rows, error } = await sb
-      .from('imports').select('prop_data, imported_at, imported_by')
+      .from(SB_IMPORTS).select('prop_data, imported_at, imported_by')
       .order('imported_at', { ascending: false }).limit(1);
     if (error || !rows?.length) return;
     if (lastImportAt && rows[0].imported_at !== lastImportAt) {
@@ -952,7 +954,7 @@ function sortProps(arr) {
 ============================================================ */
 async function loadTemplates() {
   try {
-    const { data } = await sb.from('templates').select('name,areas');
+    const { data } = await sb.from(SB_TEMPLATES).select('name,areas');
     if (!data) return;
     templates = { repo: {}, koma: {}, shared: {} };
     data.forEach(row => {
@@ -1006,7 +1008,7 @@ async function saveTemplate() {
   // 選択中のエリアを配列で保存（空=全エリア）
   const areaArr = selectedAreas.size === 0 ? [] : [...selectedAreas];
   const dbKey = `repoApp_shared::${name}`;
-  const { error } = await sb.from('templates').upsert(
+  const { error } = await sb.from(SB_TEMPLATES).upsert(
     { name: dbKey, areas: areaArr }, { onConflict: 'name' }
   );
   if (error) { showToast('保存失敗: ' + error.message); return; }
@@ -1026,7 +1028,7 @@ async function deleteTemplate() {
   if (templates.shared[name] !== undefined) dbKey = `repoApp_shared::${name}`;
   else if (templates.repo[name]  !== undefined) dbKey = `repoApp_repo::${name}`;
   else if (templates.koma[name]  !== undefined) dbKey = `repoApp_koma::${name}`;
-  if (dbKey) await sb.from('templates').delete().eq('name', dbKey);
+  if (dbKey) await sb.from(SB_TEMPLATES).delete().eq('name', dbKey);
   delete templates.shared[name]; delete templates.repo[name]; delete templates.koma[name];
   buildTmplSelects();
   showToast(`「${name}」を削除しました`);
