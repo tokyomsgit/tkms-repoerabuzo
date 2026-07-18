@@ -24,11 +24,12 @@ const CONFIG = {
 /** 初回のみ実行: Script Properties に Supabase 設定を保存 */
 function setupConfig() {
   const props = PropertiesService.getScriptProperties();
+  const existingToken = props.getProperty('WEBAPP_TOKEN');
   props.setProperties({
     SUPABASE_URL: 'https://bypticegujbxgvcctkju.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5cHRpY2VndWpieGd2Y2N0a2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NzA3OTUsImV4cCI6MjA5NzA0Njc5NX0.4fzXRVUYKzkDDmOzEiq3PP0Wk8ZujdD7AJAYivnWgbc',
     DRIVE_FOLDER_ID: CONFIG.FOLDER_ID,
-    WEBAPP_TOKEN: Utilities.getUuid(),
+    WEBAPP_TOKEN: existingToken || Utilities.getUuid(),
   });
   Logger.log('設定を保存しました。WEBAPP_TOKEN を index.html の GAS_WEBAPP_TOKEN にも設定してください。');
 }
