@@ -85,6 +85,14 @@ body{
   font-family:inherit;font-weight:700;font-size:13px;
 }
 .text-output-btn:hover{background:#333}
+.pane-header-btns{display:flex;gap:6px;flex-shrink:0}
+.removal-output-btn{
+  padding:6px 14px;
+  background:#fff;color:#cc0000;
+  border:2px solid #cc0000;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:13px;
+}
+.removal-output-btn:hover{background:#fff0f0}
 
 /* 共通ツールバー */
 .shared-toolbar{
@@ -390,6 +398,7 @@ body{
   .pane-header{padding:8px 10px}
   .pane-title{font-size:15px}
   .text-output-btn{font-size:12px;padding:5px 10px}
+  .removal-output-btn{font-size:12px;padding:5px 10px}
 
   /* バッジ数字 */
   .quota-badge .quota-current{font-size:22px}
@@ -472,7 +481,10 @@ body{
           <span class="quota-diff" id="repo-diff"></span>
         </span>
       </div>
-      <button class="text-output-btn" onclick="openTextModal('repo')">テキスト出力</button>
+      <div class="pane-header-btns">
+        <button class="removal-output-btn" onclick="openRemovalModal()">外しリスト</button>
+        <button class="text-output-btn" onclick="openTextModal('repo')">テキスト出力</button>
+      </div>
     </div>
     <div class="card-list" id="repo-list"></div>
   </div>
@@ -515,6 +527,29 @@ body{
         </div>
       </div>
       <button class="text-copy-btn" onclick="sendMail()" style="margin-top:6px;background:#1a56a0">📧 メール作成（コピー＆Gmail開く）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 外しリストモーダル -->
+<div class="text-modal-overlay" id="removal-modal-overlay" onclick="if(event.target===this)closeRemovalModal()">
+  <div class="text-modal">
+    <div class="text-modal-header">
+      <span class="text-modal-title" id="removal-modal-title">外しリスト</span>
+      <button class="text-modal-close" onclick="closeRemovalModal()">×</button>
+    </div>
+    <div class="text-modal-body">
+      <textarea class="text-output-area" id="removal-output-area" readonly></textarea>
+      <button class="text-copy-btn" onclick="copyRemovalText()">📋 コピー</button>
+      <div class="mail-area-row">
+        <span class="mail-area-label">送信エリア <span style="color:#cc0000">*</span></span>
+        <div class="mail-area-options">
+          <label class="mail-area-option"><input type="radio" name="removal-mail-area" value="城東">城東</label>
+          <label class="mail-area-option"><input type="radio" name="removal-mail-area" value="城西">城西</label>
+          <label class="mail-area-option"><input type="radio" name="removal-mail-area" value="城南">城南</label>
+        </div>
+      </div>
+      <button class="text-copy-btn" onclick="sendRemovalMail()" style="margin-top:6px;background:#993333">📧 外しリストをメール作成（all@tokyoms.co.jp）</button>
     </div>
   </div>
 </div>
@@ -1250,8 +1285,64 @@ function openTextModal(pane) {
 }
 function closeTextModal() { document.getElementById('text-modal-overlay').classList.remove('open'); }
 
-function getMailArea() {
-  const el = document.querySelector('input[name="mail-area"]:checked');
+function getRemovalProps() {
+  const areas = getSharedArea();
+  return sortProps(
+    repoProps.filter(p => movedToKoma.has(p.n))
+      .filter(p => areas.size === 0 || areas.has(p._area))
+  );
+}
+
+function openRemovalModal() {
+  const props = getRemovalProps();
+  document.getElementById('removal-modal-title').textContent = '外しリスト（' + props.length + '件）';
+  document.getElementById('removal-output-area').value = props.map(p => p.n).join('\n');
+  document.querySelectorAll('input[name="removal-mail-area"]').forEach(r => { r.checked = false; });
+  document.getElementById('removal-modal-overlay').classList.add('open');
+}
+
+function closeRemovalModal() { document.getElementById('removal-modal-overlay').classList.remove('open'); }
+
+function copyRemovalText() {
+  const ta = document.getElementById('removal-output-area');
+  ta.select();
+  document.execCommand('copy');
+  showToast('外しリストをコピーしました');
+}
+
+const MAIL_ALL = 'all@tokyoms.co.jp';
+
+function sendRemovalMail() {
+  const area = getMailArea('removal-mail-area');
+  if (!area) {
+    showToast('送信エリア（城東・城西・城南）を選択してください', 3500);
+    return;
+  }
+
+  const ta = document.getElementById('removal-output-area');
+  if (!ta.value.trim()) {
+    showToast('外しリストは0件です', 3500);
+    return;
+  }
+
+  const to = encodeURIComponent(MAIL_ALL);
+  const subject = encodeURIComponent(area + ' 外し物件リスト');
+
+  navigator.clipboard.writeText(ta.value).catch(() => {
+    ta.select();
+    document.execCommand('copy');
+  });
+
+  window.open(
+    `https://mail.google.com/mail/?view=cm&to=${to}&su=${subject}`,
+    '_blank'
+  );
+
+  showToast('📋 外しリストをコピーしました！Gmailに貼り付けて送信してください', 4000);
+}
+
+function getMailArea(radioName) {
+  const el = document.querySelector('input[name="' + radioName + '"]:checked');
   return el ? el.value : null;
 }
 
@@ -1262,14 +1353,14 @@ const MAIL_TO = {
 };
 
 function sendMail() {
-  const area = getMailArea();
+  const area = getMailArea('mail-area');
   if (!area) {
     showToast('送信エリア（城東・城西・城南）を選択してください', 3500);
     return;
   }
 
   const ta      = document.getElementById('text-output-area');
-  const to      = encodeURIComponent(MAIL_TO[area]);
+  const to      = encodeURIComponent(MAIL_TO[area] + ',' + MAIL_ALL);
   const subject = encodeURIComponent('物件リスト(' + area + ')');
 
   // ① テキストをクリップボードにコピー
