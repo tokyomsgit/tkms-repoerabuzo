@@ -37,6 +37,8 @@ body{
   letter-spacing:.04em;
 }
 .import-btn:hover{background:#333}
+.drive-hdr-btn{background:#1a56a0}
+.drive-hdr-btn:hover{background:#134080}
 
 /* メインレイアウト */
 .main-layout{
@@ -298,6 +300,13 @@ body{
 }
 .run-btn:hover:not(:disabled){background:#333}
 .run-btn:disabled{opacity:.4;cursor:not-allowed}
+.drive-import-btn{
+  width:100%;padding:12px;background:#1a56a0;color:#fff;
+  border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
+}
+.drive-import-btn:hover:not(:disabled){background:#134080}
+.drive-import-btn:disabled{opacity:.4;cursor:not-allowed}
+.drive-import-note{font-size:11px;color:#666;font-weight:700;margin:8px 0 12px;line-height:1.5}
 .status-line{font-size:12px;color:#666;margin-top:6px;min-height:16px;text-align:center;font-weight:700}
 .modal-close-row{text-align:right;margin-top:10px}
 .modal-close-btn{
@@ -423,6 +432,7 @@ body{
 <div class="header">
   <div class="logo">レポ選ぶぞう</div>
   <div class="hdr-btns">
+    <button class="import-btn drive-hdr-btn" onclick="importFromDrive()">☁️ Driveから取込</button>
     <button class="import-btn" onclick="openImport()">📂 データ取込</button>
   </div>
 </div>
@@ -558,6 +568,8 @@ body{
 <div class="import-overlay" id="import-overlay" onclick="if(event.target===this)closeImport()">
   <div class="import-modal">
     <h2>📂 データ取込</h2>
+    <button class="drive-import-btn" id="drive-import-btn" onclick="importFromDrive()">☁️ Driveから取込（3ファイル自動）</button>
+    <p class="drive-import-note">Google Drive「反響データ取込」フォルダから コマ掲載中・レポ掲載中・反響一覧 CSV を取得して取込します</p>
     <div class="file-row">
       <label class="file-label">① コマ掲載中CSV</label>
       <div class="dropzone" id="dz-koma">
@@ -598,6 +610,19 @@ body{
 const SUPABASE_URL = 'https://rtpugbilekylwgycglza.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHVnYmlsZWt5bHdneWNnbHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTY3MzksImV4cCI6MjA5NjA5MjczOX0.UM9TH6HGuAyfFdTkIqVyFawMsJDSobHytumgP2fl7EU';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* Google Drive（OAuth Client ID を Google Cloud Console で発行して設定） */
+const GOOGLE_CLIENT_ID = '';
+const DRIVE_FOLDER_ID = '17DQw6k7cJxOm_xV0VNMKVypYg-4TkU2W';
+const DRIVE_FILE_NAMES = {
+  koma: 'コマ掲載中.csv',
+  repo: 'レポ掲載中.csv',
+  rep:  '反響一覧.csv',
+};
+let googleTokenClient = null;
+let googleAccessToken = null;
+let pendingDriveImport = false;
+let driveImportRunning = false;
 
 /* ============================================================
    状態
@@ -665,6 +690,7 @@ function isSetagayaError(area) {
    初期化
 ============================================================ */
 async function initApp() {
+  loadGoogleIdentityScript();
   const hasData = await loadFromStorage();
   await loadTemplates();
   await loadDrafts();
@@ -1414,6 +1440,161 @@ async function copyPropName(name, btn) {
 const files = { koma: null, repo: null, rep: null };
 function openImport()  { document.getElementById('import-overlay').classList.add('open'); }
 function closeImport() { document.getElementById('import-overlay').classList.remove('open'); }
+
+function updateRunBtnState() {
+  document.getElementById('run-btn').disabled = !(files.koma && files.repo && files.rep);
+}
+
+function markFileLoaded(key, fileName) {
+  document.getElementById('dz-' + key).classList.add('loaded');
+  document.getElementById('dz-' + key + '-text').textContent = `✓ ${fileName}`;
+  updateRunBtnState();
+}
+
+function loadGoogleIdentityScript() {
+  if (document.getElementById('google-gsi')) return;
+  const s = document.createElement('script');
+  s.id = 'google-gsi';
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.defer = true;
+  s.onload = () => initGoogleDrive();
+  document.head.appendChild(s);
+}
+
+function initGoogleDrive() {
+  if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.oauth2) return;
+  googleTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.readonly',
+    callback: (response) => {
+      if (response.error) {
+        setStatus('Google認証エラー: ' + response.error);
+        showToast('Google認証に失敗しました', 5000);
+        driveImportRunning = false;
+        pendingDriveImport = false;
+        return;
+      }
+      googleAccessToken = response.access_token;
+      if (pendingDriveImport) {
+        pendingDriveImport = false;
+        fetchFromDriveAndImport();
+      }
+    },
+  });
+}
+
+function setDriveImportBusy(busy) {
+  driveImportRunning = busy;
+  const btn = document.getElementById('drive-import-btn');
+  if (btn) btn.disabled = busy;
+}
+
+async function driveApiFetch(url) {
+  let res = await fetch(url, { headers: { Authorization: 'Bearer ' + googleAccessToken } });
+  if (res.status === 401) {
+    googleAccessToken = null;
+    throw new Error('Google認証の有効期限が切れました。もう一度お試しください');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || ('Drive API エラー (' + res.status + ')'));
+  }
+  return res;
+}
+
+function pickDriveFilesByName(driveFiles) {
+  const picked = {};
+  Object.entries(DRIVE_FILE_NAMES).forEach(([key, targetName]) => {
+    const matches = driveFiles.filter(f => f.name === targetName);
+    if (matches.length === 0) { picked[key] = null; return; }
+    picked[key] = matches.sort((a, b) => new Date(b.modifiedTime) - new Date(a.modifiedTime))[0];
+  });
+  return picked;
+}
+
+async function downloadDriveFile(fileId, fileName) {
+  const res = await driveApiFetch(
+    'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media'
+  );
+  const blob = await res.blob();
+  return new File([blob], fileName, { type: blob.type || 'text/csv' });
+}
+
+async function fetchFromDriveAndImport() {
+  if (driveImportRunning) return;
+  setDriveImportBusy(true);
+  try {
+    setStatus('Driveフォルダからファイル検索中…');
+    const q = encodeURIComponent("'" + DRIVE_FOLDER_ID + "' in parents and trashed=false");
+    const listUrl = 'https://www.googleapis.com/drive/v3/files?q=' + q
+      + '&fields=files(id,name,modifiedTime)&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true';
+    const listRes = await driveApiFetch(listUrl);
+    const { files: driveFiles } = await listRes.json();
+    const picked = pickDriveFilesByName(driveFiles || []);
+    const missing = Object.entries(DRIVE_FILE_NAMES)
+      .filter(([key]) => !picked[key])
+      .map(([, name]) => name);
+    if (missing.length) {
+      throw new Error('Driveフォルダに見つかりません: ' + missing.join('、'));
+    }
+
+    setStatus('CSVをダウンロード中…');
+    for (const [key, info] of Object.entries(picked)) {
+      files[key] = await downloadDriveFile(info.id, info.name);
+      markFileLoaded(key, info.name + '（Drive）');
+    }
+
+    setStatus('取込処理中…');
+    await runImport();
+  } catch (e) {
+    setStatus('エラー: ' + e.message);
+    showToast(e.message, 6000);
+    console.error(e);
+  } finally {
+    setDriveImportBusy(false);
+  }
+}
+
+async function importFromDrive() {
+  openImport();
+  if (driveImportRunning) return;
+
+  if (!GOOGLE_CLIENT_ID) {
+    setStatus('⚠ GOOGLE_CLIENT_ID が未設定です（index.html を編集してください）');
+    showToast('Google Client ID を設定してください', 6000);
+    return;
+  }
+
+  setStatus('Google Drive接続中…');
+  try {
+    if (!window.google?.accounts?.oauth2) {
+      await new Promise((resolve, reject) => {
+        const started = Date.now();
+        const wait = setInterval(() => {
+          if (window.google?.accounts?.oauth2) { clearInterval(wait); initGoogleDrive(); resolve(); }
+          else if (Date.now() - started > 10000) { clearInterval(wait); reject(new Error('Google認証の読込に失敗しました')); }
+        }, 100);
+      });
+    }
+    if (!googleTokenClient) initGoogleDrive();
+    if (!googleTokenClient) throw new Error('Google Drive連携の初期化に失敗しました');
+
+    if (googleAccessToken) {
+      await fetchFromDriveAndImport();
+      return;
+    }
+
+    pendingDriveImport = true;
+    setDriveImportBusy(true);
+    googleTokenClient.requestAccessToken({ prompt: 'select_account' });
+  } catch (e) {
+    setStatus('エラー: ' + e.message);
+    showToast(e.message, 5000);
+    setDriveImportBusy(false);
+  }
+}
+
 function onFile(key, input) {
   const file = input.files[0]; if (!file) return;
   files[key] = file;
@@ -1476,7 +1657,7 @@ function onFile(key, input) {
           error: () => showResult('UTF-8', fields, r.data.length)
         });
       }
-      document.getElementById('run-btn').disabled = !(files.koma && files.repo && files.rep);
+      updateRunBtnState();
     },
     error: () => {
       row.textContent = `❌ ${label}CSV：読込エラー`;
@@ -1586,7 +1767,7 @@ async function runImport() {
     setStatus(`✓ 完了（コマ${komaCount}件 / レポ${repoCount}件）`);
     showToast(`完了：コマ${komaCount}件 / レポ${repoCount}件`, 5000);
   } catch(e) { setStatus('エラー: ' + e.message); console.error(e); }
-  document.getElementById('run-btn').disabled = false;
+  updateRunBtnState();
 }
 
 /* ============================================================
