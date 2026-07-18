@@ -441,7 +441,7 @@ body{
     <div class="logo">レポ選ぶぞう</div>
     <div class="header-meta">
       <span id="import-time-label">取込：—</span>
-      <span id="import-freq-label">更新：Drive 15分ごと / 画面反映 3分ごと</span>
+      <span id="import-freq-label">自動更新：約15分ごと</span>
     </div>
   </div>
   <div class="hdr-btns">
@@ -652,8 +652,7 @@ function updateImportMetaDisplay(importedAt, importedBy) {
     const src = importedBy ? '（' + importedBy + '）' : '';
     timeEl.textContent = '取込：' + formatImportTime(importedAt) + src;
   }
-  freqEl.textContent = '更新：Drive ' + DRIVE_SYNC_INTERVAL_MIN + '分ごと / 画面反映 '
-    + (AUTO_SYNC_MS / 60000) + '分ごと';
+  freqEl.textContent = '自動更新：約' + DRIVE_SYNC_INTERVAL_MIN + '分ごと（Drive → Supabase）';
 }
 
 function applyLatestImport(row, silent) {
