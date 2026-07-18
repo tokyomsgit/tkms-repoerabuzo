@@ -27,8 +27,34 @@ function setupConfig() {
     SUPABASE_URL: 'https://rtpugbilekylwgycglza.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0cHVnYmlsZWt5bHdneWNnbHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MTY3MzksImV4cCI6MjA5NjA5MjczOX0.UM9TH6HGuAyfFdTkIqVyFawMsJDSobHytumgP2fl7EU',
     DRIVE_FOLDER_ID: CONFIG.FOLDER_ID,
+    WEBAPP_TOKEN: Utilities.getUuid(),
   });
-  Logger.log('設定を保存しました。');
+  Logger.log('設定を保存しました。WEBAPP_TOKEN を index.html の GAS_WEBAPP_TOKEN にも設定してください。');
+}
+
+/** WEBAPP_TOKEN を実行ログに表示（index.html の GAS_WEBAPP_TOKEN にコピー） */
+function showWebappToken() {
+  var token = PropertiesService.getScriptProperties().getProperty('WEBAPP_TOKEN');
+  Logger.log('WEBAPP_TOKEN: ' + token);
+}
+
+/** Webアプリ公開用（アプリの「Drive今すぐ同期」ボタンから呼ばれる） */
+function doGet(e) {
+  try {
+    var token = PropertiesService.getScriptProperties().getProperty('WEBAPP_TOKEN');
+    if (token && (!e || !e.parameter || e.parameter.token !== token)) {
+      return jsonOut_({ ok: false, error: 'Unauthorized' });
+    }
+    var result = syncFromDrive(true);
+    return jsonOut_({ ok: true, message: result.message, syncedAt: result.syncedAt, skipped: !!result.skipped });
+  } catch (err) {
+    return jsonOut_({ ok: false, error: String(err.message || err) });
+  }
+}
+
+function jsonOut_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /** 初回のみ実行: 15分ごとの定期同期トリガーを登録 */
@@ -87,7 +113,7 @@ function syncFromDrive(force) {
   const lastSig = props.getProperty('LAST_SYNC_SIG');
   if (!force && sig === lastSig) {
     Logger.log('変更なし — スキップ');
-    return;
+    return { message: '変更なし（スキップ）', skipped: true, syncedAt: props.getProperty('LAST_SYNC_AT') };
   }
 
   const komaRows = parsePropCsv(blobs.koma);
@@ -98,7 +124,9 @@ function syncFromDrive(force) {
   insertToSupabase(supabaseUrl, supabaseKey, propData);
   props.setProperty('LAST_SYNC_SIG', sig);
   props.setProperty('LAST_SYNC_AT', new Date().toISOString());
-  Logger.log('同期完了: コマ' + komaRows.length + ' / レポ' + repoRows.length);
+  var msg = '同期完了: コマ' + komaRows.length + ' / レポ' + repoRows.length;
+  Logger.log(msg);
+  return { message: msg, syncedAt: props.getProperty('LAST_SYNC_AT') };
 }
 
 function insertToSupabase(url, key, propData) {

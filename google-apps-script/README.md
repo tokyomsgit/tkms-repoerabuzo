@@ -29,6 +29,22 @@
 1. 関数 `setupTrigger` を **1回だけ** 実行
 2. **トリガー** 画面に `syncFromDrive` / 15分ごと が追加されます
 
+### 5. Webアプリ公開（アプリの「Drive今すぐ同期」ボタン用）
+
+1. 関数 `setupConfig` を **もう一度** 実行（`WEBAPP_TOKEN` を生成）
+2. **プロジェクトの設定 → スクリプト プロパティ** で `WEBAPP_TOKEN` の値をコピー
+3. Apps Script 右上 **デプロイ → 新しいデプロイ**
+   - 種類：**ウェブアプリ**
+   - 説明：`Drive sync`
+   - 実行ユーザー：**自分**
+   - アクセス：**全員**（匿名含む）
+4. 表示された **ウェブアプリ URL** をコピー
+5. `index.html` に設定：
+   ```javascript
+   const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/....../exec';
+   const GAS_WEBAPP_TOKEN = 'setupConfigで生成されたトークン';
+   ```
+
 ## 同期対象ファイル
 
 | ファイル名 | 用途 |
