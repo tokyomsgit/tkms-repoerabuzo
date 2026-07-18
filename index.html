@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>レポ選ぶぞう</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -276,48 +275,6 @@ body{
   width:16px;height:16px;accent-color:#111;cursor:pointer;
 }
 
-/* インポートモーダル */
-.import-overlay{
-  display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,.5);z-index:1000;
-  align-items:center;justify-content:center;
-}
-.import-overlay.open{display:flex}
-.import-modal{
-  background:#fff;border:3px solid #111;
-  width:480px;max-width:95vw;padding:20px;
-}
-.import-modal h2{font-size:18px;font-weight:900;margin-bottom:14px;border-bottom:2px solid #111;padding-bottom:8px}
-.file-row{margin-bottom:12px}
-.file-label{font-size:13px;font-weight:900;margin-bottom:4px;display:block}
-.dropzone{
-  border:2px dashed #999;padding:10px 14px;
-  text-align:center;cursor:pointer;background:#f9f9f9;
-  position:relative;font-size:13px;color:#666;font-weight:700;transition:all .15s;
-}
-.dropzone:hover,.dropzone.drag{border-color:#111;background:#f0f0f0}
-.dropzone.loaded{border-color:#009900;background:#f0fff0;color:#009900}
-.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.run-btn{
-  width:100%;padding:12px;background:#111;color:#fff;
-  border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;margin-top:10px;
-}
-.run-btn:hover:not(:disabled){background:#333}
-.run-btn:disabled{opacity:.4;cursor:not-allowed}
-.drive-import-btn{
-  width:100%;padding:12px;background:#1a56a0;color:#fff;
-  border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;
-}
-.drive-import-btn:hover:not(:disabled){background:#134080}
-.drive-import-btn:disabled{opacity:.4;cursor:not-allowed}
-.drive-import-note{font-size:11px;color:#666;font-weight:700;margin:8px 0 12px;line-height:1.5}
-.status-line{font-size:12px;color:#666;margin-top:6px;min-height:16px;text-align:center;font-weight:700}
-.modal-close-row{text-align:right;margin-top:10px}
-.modal-close-btn{
-  padding:6px 16px;background:#fff;border:2px solid #111;
-  cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;
-}
-
 /* エリア複数選択ドロップダウン */
 .area-multi-wrap{position:relative;display:inline-block}
 .area-multi-btn{
@@ -430,7 +387,6 @@ body{
 
   /* モーダル */
   .text-modal{width:96vw;max-height:85vh}
-  .import-modal{width:96vw;padding:14px}
 }
 </style>
 </head>
@@ -446,7 +402,6 @@ body{
   </div>
   <div class="hdr-btns">
     <button class="import-btn drive-hdr-btn gas-sync-btn" onclick="triggerGasSync()">🔄 Drive今すぐ同期</button>
-    <button class="import-btn" onclick="openImport()">📂 データ取込</button>
   </div>
 </div>
 
@@ -573,41 +528,6 @@ body{
         </div>
       </div>
       <button class="text-copy-btn" onclick="sendRemovalMail()" style="margin-top:6px;background:#993333">📧 外しリストをメール作成（all@tokyoms.co.jp）</button>
-    </div>
-  </div>
-</div>
-
-<!-- データ取込モーダル -->
-<div class="import-overlay" id="import-overlay" onclick="if(event.target===this)closeImport()">
-  <div class="import-modal">
-    <h2>📂 データ取込</h2>
-    <button class="drive-import-btn gas-sync-btn" id="gas-sync-btn" onclick="triggerGasSync()">🔄 Drive今すぐ同期（testSyncFromDrive）</button>
-    <p class="drive-import-note">Apps Script で Drive → Supabase 同期を即実行します（定期実行とは別に手動トリガー）</p>
-    <div class="file-row">
-      <label class="file-label">① コマ掲載中CSV</label>
-      <div class="dropzone" id="dz-koma">
-        <input type="file" accept=".csv" onchange="onFile('koma',this)">
-        <span id="dz-koma-text">クリックまたはドロップ</span>
-      </div>
-    </div>
-    <div class="file-row">
-      <label class="file-label">② レポ掲載中CSV</label>
-      <div class="dropzone" id="dz-repo">
-        <input type="file" accept=".csv" onchange="onFile('repo',this)">
-        <span id="dz-repo-text">クリックまたはドロップ</span>
-      </div>
-    </div>
-    <div class="file-row">
-      <label class="file-label">③ 反響一覧CSV</label>
-      <div class="dropzone" id="dz-rep">
-        <input type="file" accept=".csv" onchange="onFile('rep',this)">
-        <span id="dz-rep-text">クリックまたはドロップ</span>
-      </div>
-    </div>
-    <button class="run-btn" id="run-btn" disabled onclick="runImport()">取込・更新</button>
-    <div class="status-line" id="status-line"></div>
-    <div class="modal-close-row">
-      <button class="modal-close-btn" onclick="closeImport()">閉じる</button>
     </div>
   </div>
 </div>
@@ -1495,22 +1415,8 @@ async function copyPropName(name, btn) {
 }
 
 /* ============================================================
-   データ取込
+   Drive同期（Apps Script Webアプリ）
 ============================================================ */
-const files = { koma: null, repo: null, rep: null };
-function openImport()  { document.getElementById('import-overlay').classList.add('open'); }
-function closeImport() { document.getElementById('import-overlay').classList.remove('open'); }
-
-function updateRunBtnState() {
-  document.getElementById('run-btn').disabled = !(files.koma && files.repo && files.rep);
-}
-
-function markFileLoaded(key, fileName) {
-  document.getElementById('dz-' + key).classList.add('loaded');
-  document.getElementById('dz-' + key + '-text').textContent = `✓ ${fileName}`;
-  updateRunBtnState();
-}
-
 function setGasSyncBusy(busy) {
   gasSyncRunning = busy;
   document.querySelectorAll('.gas-sync-btn').forEach(function (btn) { btn.disabled = busy; });
@@ -1519,8 +1425,7 @@ function setGasSyncBusy(busy) {
 async function triggerGasSync() {
   if (gasSyncRunning) return;
   if (!GAS_WEB_APP_URL) {
-    showToast('GAS_WEB_APP_URL が未設定です（index.html を編集）', 6000);
-    openImport();
+    showToast('GAS_WEB_APP_URL が未設定です', 6000);
     return;
   }
 
@@ -1549,256 +1454,9 @@ async function triggerGasSync() {
   }
 }
 
-function onFile(key, input) {
-  const file = input.files[0]; if (!file) return;
-  files[key] = file;
-  document.getElementById('dz-' + key).classList.add('loaded');
-  document.getElementById('dz-' + key + '-text').textContent = `✓ ${file.name}`;
-
-  const label = key === 'koma' ? 'コマ' : key === 'repo' ? 'レポ' : '反響';
-
-  // デバッグ欄を確実に作成
-  let dbg = document.getElementById('csv-debug');
-  if (!dbg) {
-    dbg = document.createElement('div');
-    dbg.id = 'csv-debug';
-    dbg.style.cssText = 'margin-top:10px;font-size:12px;font-weight:700;line-height:2;padding:8px 10px;background:#f0f0f0;border:2px solid #999;word-break:break-all';
-    // run-btnの直前に挿入
-    document.getElementById('run-btn').insertAdjacentElement('beforebegin', dbg);
-  }
-  const rowId = 'csv-dbg-' + key;
-  let row = document.getElementById(rowId);
-  if (!row) { row = document.createElement('div'); row.id = rowId; dbg.appendChild(row); }
-  row.textContent = `${label}CSV：読込中…`;
-
-  function showResult(encoding, fields, rowCount) {
-    let ok;
-    if (key === 'rep') {
-      // 反響CSVは行政区・物件名・反響日で判定
-      ok = fields.some(f => f.includes('行政区') || f.includes('市郡区'))
-        && fields.some(f => f.includes('物件名'))
-        && fields.some(f => f.includes('反響日'));
-    } else {
-      // コマ・レポはエリア・物件名で判定
-      ok = fields.some(f => f.includes('エリア')) && fields.some(f => f.includes('物件名'));
-    }
-    const icon = ok ? '✅' : '❌';
-    row.innerHTML = `${icon} <b>${label}CSV</b> [${encoding}] ${rowCount}行<br>列名：${fields.map(f=>`<span style="background:#fff;border:1px solid #999;padding:0 4px;margin:1px;display:inline-block">${f}</span>`).join('')}`;
-    row.style.color = ok ? '#007700' : '#cc0000';
-  }
-
-  Papa.parse(file, {
-    header: true, skipEmptyLines: true, encoding: 'UTF-8', preview: 5,
-    complete: r => {
-      const fields = r.meta?.fields || [];
-      let ok;
-      if (key === 'rep') {
-        ok = fields.some(f => f.includes('行政区') || f.includes('市郡区'))
-          && fields.some(f => f.includes('物件名'))
-          && fields.some(f => f.includes('反響日'));
-      } else {
-        ok = fields.some(f => f.includes('エリア')) && fields.some(f => f.includes('物件名'));
-      }
-      if (ok) {
-        showResult('UTF-8', fields, r.data.length);
-      } else {
-        Papa.parse(file, {
-          header: true, skipEmptyLines: true, encoding: 'Shift_JIS', preview: 5,
-          complete: r2 => {
-            const f2 = r2.meta?.fields || [];
-            showResult('Shift-JIS', f2, r2.data.length);
-          },
-          error: () => showResult('UTF-8', fields, r.data.length)
-        });
-      }
-      updateRunBtnState();
-    },
-    error: () => {
-      row.textContent = `❌ ${label}CSV：読込エラー`;
-      row.style.color = '#cc0000';
-    }
-  });
-}
-function setStatus(msg) { document.getElementById('status-line').textContent = msg; }
-
-function isHeaderLikeRow(r) {
-  const n = String(r['物件名'] || '').replace(/^\uFEFF/, '').trim();
-  const a = String(r['エリア'] || '').replace(/^\uFEFF/, '').trim();
-  return n === '物件名' || a === 'エリア';
-}
-
-function isValidPropRow(r) {
-  return r['エリア'] && r['物件名'] && !isHeaderLikeRow(r);
-}
-
-async function runImport() {
-  document.getElementById('run-btn').disabled = true;
-  setStatus('ファイルを読み込み中…');
-  try {
-    const [komaRows, repoRows, repRows] = await Promise.all([
-      parseCSVFile(files.koma), parseCSVFile(files.repo), parseRepCSV(files.rep)
-    ]);
-    setStatus('データを処理中…');
-    const propsRaw = [
-      ...komaRows.map(r => ({ ...r, _type: 'koma' })),
-      ...repoRows.map(r => ({ ...r, _type: 'repo' })),
-    ];
-    const props = propsRaw.filter(isValidPropRow);
-    // フィルタ落ちチェック
-    const komaRaw = propsRaw.filter(r => r._type === 'koma');
-    const repoRaw = propsRaw.filter(r => r._type === 'repo');
-    const komaFiltered = props.filter(r => r._type === 'koma');
-    const repoFiltered = props.filter(r => r._type === 'repo');
-    if (komaFiltered.length === 0 && komaRaw.length > 0) {
-      // コマCSVのカラム名を確認してエラー表示
-      const komaKeys = Object.keys(komaRaw[0] || {}).join('、');
-      setStatus(`⚠ コマCSVの列名が違う可能性があります。検出列：${komaKeys}`);
-      showToast(`⚠ コマ0件：列名を確認してください`, 8000);
-    }
-    props.forEach(r => {
-      r._price = parseFloat((r['価格'] || '').replace(/万円|,/g, '').trim()) || 0;
-      r._area  = parseFloat((r['専有面積'] || '').replace('㎡', '').trim()) || 0;
-      r._pv    = parseFloat(r['PV直近1週']) || 0;
-      r._pa    = parseFloat(r['PV全期間']) || 0;
-      r['エリア'] = (r['エリア'] || '').trim();
-      // 世田谷区1・世田谷区2 は末尾数字を保持、それ以外は末尾数字を除去
-      if (!r['エリア'].match(/^世田谷区[12]$/)) {
-        r['エリア'] = r['エリア'].replace(/\d+$/, '').trim();
-      }
-      r['エリア'] = AREA_NORM[r['エリア']] || r['エリア'];
-    });
-    const propKey = r => (r['物件名'] || '').trim();
-    const nameCount = {};
-    props.forEach(r => { const k = propKey(r); nameCount[k] = (nameCount[k] || 0) + 1; });
-    const nameToArea = {};
-    props.forEach(r => { const k = propKey(r); if (nameCount[k] === 1) nameToArea[k] = r['エリア']; });
-    const propSet = new Set(props.map(r => r['エリア'] + '|' + propKey(r)));
-    const validRep = repRows.filter(r => {
-      if (!r['行政区'] && r['市郡区']) r['行政区'] = r['市郡区'];
-      return r['行政区'] && r['物件名'] && r['反響日'];
-    });
-    validRep.forEach(r => { r._date = parseRepDate(r['反響日']); r['行政区'] = AREA_NORM[r['行政区']] || r['行政区']; });
-    const endDate = new Date(Math.max(...validRep.map(r => r._date || 0)));
-    const startDate = new Date(endDate); startDate.setDate(endDate.getDate() - 6); startDate.setHours(0,0,0,0);
-    const week = validRep.filter(r => r._date && r._date >= startDate && r._date <= endDate);
-    const expanded = [];
-    week.forEach(r => {
-      const name = r['物件名'] || '';
-      if (name.includes('\n')) name.split('\n').forEach(n => { const c = n.trim().replace(/\s+\d[\d,.]*$/, ''); if (c) expanded.push({ ...r, '物件名': c }); });
-      else expanded.push(r);
-    });
-    expanded.forEach(r => {
-      const area = r['行政区'], name = r['物件名'];
-      const directKey = area + '|' + name;
-      if (propSet.has(directKey)) { r._resolved_area = area; r._resolved_name = name; return; }
-      const roomMatch = [...propSet].find(k => k.startsWith(area + '|' + name + ' '));
-      if (roomMatch) { r._resolved_area = area; r._resolved_name = roomMatch.split('|')[1]; return; }
-      const clean = name.replace(/\s+\d+[\-\d]*$/, '');
-      if (clean !== name) {
-        if (propSet.has(area + '|' + clean)) { r._resolved_area = area; r._resolved_name = clean; return; }
-        const cleanRoom = [...propSet].find(k => k.startsWith(area + '|' + clean + ' '));
-        if (cleanRoom) { r._resolved_area = area; r._resolved_name = cleanRoom.split('|')[1]; return; }
-        if (nameToArea[clean]) { r._resolved_area = nameToArea[clean]; r._resolved_name = clean; return; }
-      }
-      if (nameToArea[name]) { r._resolved_area = nameToArea[name]; r._resolved_name = name; return; }
-      r._resolved_area = null; r._resolved_name = null;
-    });
-    const matched = expanded.filter(r => r._resolved_area);
-    const propRepMap = {};
-    matched.forEach(r => { const k = r._resolved_area + '|' + r._resolved_name; propRepMap[k] = (propRepMap[k] || 0) + 1; });
-    const areas = [...new Set(props.map(r => r['エリア']))].sort();
-    const newPropData = {};
-    areas.forEach(area => {
-      const g = props.filter(r => r['エリア'] === area);
-      newPropData[area] = g.map(r => ({
-        n: propKey(r), p: r._price, m: r['間取り'] || '—',
-        s: r._area, pv: r._pv, pa: r._pa,
-        r: propRepMap[area + '|' + propKey(r)] || 0,
-        _type: r._type || 'koma', addr: '—',
-      }));
-    });
-    setStatus('Supabaseへ保存中…');
-    const { error } = await sb.from('imports').insert({
-      period_label: '直近1週間', data: {}, pv_data: {}, prop_data: newPropData, imported_by: '取込',
-    });
-    if (error) throw error;
-    lastImportAt = new Date().toISOString();
-    updateImportMetaDisplay(lastImportAt, '取込');
-    movedToKoma.clear(); movedToRepo.clear();
-    parseProps(newPropData);
-    buildAreaSelects();
-    renderCards();
-    const komaCount = props.filter(r => r._type === 'koma').length;
-    const repoCount = props.filter(r => r._type === 'repo').length;
-    setStatus(`✓ 完了（コマ${komaCount}件 / レポ${repoCount}件）`);
-    showToast(`完了：コマ${komaCount}件 / レポ${repoCount}件`, 5000);
-  } catch(e) { setStatus('エラー: ' + e.message); console.error(e); }
-  updateRunBtnState();
-}
-
 /* ============================================================
    ユーティリティ
 ============================================================ */
-function parseCSVFile(file) {
-  // 正しいヘッダー列名
-  const EXPECTED_HEADERS = ['エリア','物件名','物件コード','住所','価格','間取り','専有面積','PV全期間','PV直近1週','反響合計'];
-
-  return new Promise((res, rej) => {
-    // まずShift-JIS・UTF-8両対応で全行読む
-    const tryParse = (encoding, cb) => {
-      Papa.parse(file, {
-        header: false, skipEmptyLines: true, encoding,
-        complete: r => cb(r.data),
-        error: e => rej(e)
-      });
-    };
-
-    const buildResult = (rows) => {
-      if (rows.length === 0) return [];
-      const cellNorm = c => String(c).replace(/^\uFEFF/, '').trim();
-      const firstRow = rows[0];
-      const hasHeader = firstRow.some(c => cellNorm(c) === 'エリア')
-        && firstRow.some(c => cellNorm(c) === '物件名');
-      let dataRows, headers;
-      if (hasHeader) {
-        headers = firstRow.map(c => cellNorm(c));
-        dataRows = rows.slice(1);
-      } else {
-        headers = EXPECTED_HEADERS.slice(0, firstRow.length);
-        dataRows = rows;
-      }
-      return dataRows.map(row => {
-        const obj = {};
-        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-        return obj;
-      }).filter(r => !isHeaderLikeRow(r));
-    };
-
-    tryParse('UTF-8', rows => {
-      const result = buildResult(rows);
-      if (result.length > 0 && result[0]['エリア'] && result[0]['物件名']) {
-        res(result);
-      } else {
-        // Shift-JISで再試行
-        tryParse('Shift_JIS', rows2 => {
-          res(buildResult(rows2));
-        });
-      }
-    });
-  });
-}
-function parseRepCSV(file) {
-  return new Promise((res, rej) => {
-    Papa.parse(file, { header: true, skipEmptyLines: true, encoding: 'UTF-8', complete: r => {
-      const h = r.meta?.fields || [];
-      if (h.some(f => f.includes('行政区') || f.includes('物件名'))) res(r.data);
-      else Papa.parse(file, { header: true, skipEmptyLines: true, encoding: 'Shift_JIS', complete: r2 => res(r2.data), error: e => rej(e) });
-    }, error: e => rej(e) });
-  });
-}
-function parseRepDate(s) {
-  try { const d = new Date(String(s).trim()); if (!isNaN(d)) return d; return null; } catch { return null; }
-}
 function showToast(msg, duration=3500) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.opacity = '1';
