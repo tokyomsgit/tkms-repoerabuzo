@@ -1255,6 +1255,12 @@ function getMailArea() {
   return el ? el.value : null;
 }
 
+const MAIL_TO = {
+  '城東': 'tokyomsco1@gmail.com',
+  '城西': 'tokyomsco2@gmail.com',
+  '城南': 'tokyomsco3@gmail.com',
+};
+
 function sendMail() {
   const area = getMailArea();
   if (!area) {
@@ -1263,7 +1269,7 @@ function sendMail() {
   }
 
   const ta      = document.getElementById('text-output-area');
-  const to      = encodeURIComponent('tokyomsgpt2@gmail.com');
+  const to      = encodeURIComponent(MAIL_TO[area]);
   const subject = encodeURIComponent('物件リスト(' + area + ')');
 
   // ① テキストをクリップボードにコピー
