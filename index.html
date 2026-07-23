@@ -42,6 +42,21 @@ body{
 .import-btn:hover{background:#333}
 .drive-hdr-btn{background:#1a56a0}
 .drive-hdr-btn:hover{background:#134080}
+.other-count-btn{background:#006633}
+.other-count-btn:hover{background:#004422}
+.other-count-btn:disabled{background:#999;cursor:not-allowed}
+.other-count-progress{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  background:#111;color:#fff;padding:10px 18px;border-radius:8px;
+  font-size:13px;font-weight:700;z-index:9000;min-width:240px;text-align:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
+}
+.other-count-progress-bar{
+  margin-top:8px;height:6px;background:#444;border-radius:3px;overflow:hidden;
+}
+.other-count-progress-fill{
+  height:100%;background:#4caf50;width:0%;transition:width .2s;
+}
 
 /* メインレイアウト */
 .main-layout{
@@ -401,8 +416,14 @@ body{
     </div>
   </div>
   <div class="hdr-btns">
+    <button class="import-btn other-count-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()">他社件数を更新</button>
     <button class="import-btn drive-hdr-btn gas-sync-btn" onclick="triggerGasSync()">🔄 Drive今すぐ同期</button>
   </div>
+</div>
+
+<div id="other-count-progress" class="other-count-progress" style="display:none">
+  <span id="other-count-progress-text">0 / 0件処理中…</span>
+  <div class="other-count-progress-bar"><div class="other-count-progress-fill" id="other-count-progress-fill"></div></div>
 </div>
 
 <!-- 共通ツールバー -->
@@ -544,7 +565,15 @@ const SUPABASE_URL = 'https://bypticegujbxgvcctkju.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5cHRpY2VndWpieGd2Y2N0a2p1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NzA3OTUsImV4cCI6MjA5NzA0Njc5NX0.4fzXRVUYKzkDDmOzEiq3PP0Wk8ZujdD7AJAYivnWgbc';
 const SB_IMPORTS = 'repoerabuzo_imports';
 const SB_TEMPLATES = 'repoerabuzo_templates';
+const SB_OTHER_COUNTS = 'repoerabuzo_other_counts';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* 他社件数（Netlify Function → Supabase キャッシュ） */
+const OTHER_COUNT_FN = '/.netlify/functions/other-company-count';
+const OTHER_COUNT_CONCURRENCY = 4;
+const OTHER_COUNT_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+let otherCountCache = new Map();
+let otherCountRunning = false;
 
 /* Apps Script Webアプリ（testSyncFromDrive 相当をアプリから実行） */
 const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyr6eiUjvEurzziEAqr8F1qLqkBxApmwjQNhc1BEd0fL1wAnKofwiSlKXdoWoi2sOVq/exec';
@@ -653,6 +682,7 @@ async function initApp() {
   const hasData = await loadFromStorage();
   await loadTemplates();
   await loadDrafts();
+  await loadOtherCounts();
   if (hasData) {
     buildAreaSelects();
     renderCards();
@@ -1129,6 +1159,12 @@ function renderList(containerId, props, pane) {
       const areaStr = p.s ? p.s + '㎡' : '—';
       const pv  = p.pv !== undefined ? `<span style="color:#cc0000">PV ${p.pv}</span>` : '';
       const rep = p.r ? '反響 ' + p.r + '件' : '';
+      const buildingName = suumoSearchKeyword(p.n);
+      const cacheKey = buildingName + '|' + Math.round(Number(p.p));
+      const otherInfo = otherCountCache.get(cacheKey);
+      const otherBadge = otherInfo
+        ? `<span style="color:#0066cc">他社 ${otherInfo.other_count}件</span>`
+        : `<span style="color:#999">他社未取得</span>`;
 
       const card = document.createElement('div');
       // 元の種別（_type）で枠色を決定（移動しても色は変わらない）
@@ -1146,6 +1182,7 @@ function renderList(containerId, props, pane) {
             <span>${price}</span>
             <span>${areaStr}</span>
             ${rep ? `<span>${rep}</span>` : ''}
+            ${otherBadge}
             <span style="color:#666">${p._area}</span>
           </div>
         </div>
@@ -1242,6 +1279,154 @@ function suumoSearchUrl(name) {
   const q = encodeURIComponent(suumoSearchKeyword(name));
   // 検索パネルの入力欄は name="fw2" だが、検索結果URLは fw= になる
   return 'https://suumo.jp/jj/bukken/ichiran/JJ012FC001/?bs=011&fw=' + q + '&ar=030&ta=13';
+}
+
+/* ============================================================
+   他社件数（Netlify Function + Supabase キャッシュ）
+============================================================ */
+function otherCountCacheKey(buildingName, price) {
+  return buildingName + '|' + Math.round(Number(price));
+}
+
+async function loadOtherCounts() {
+  try {
+    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, price, other_count, checked_at');
+    if (error) throw error;
+    otherCountCache = new Map();
+    (data || []).forEach(function (row) {
+      otherCountCache.set(otherCountCacheKey(row.building_name, row.price), {
+        other_count: row.other_count,
+        checked_at: row.checked_at,
+      });
+    });
+  } catch (e) {
+    console.error('他社件数キャッシュ読込エラー:', e);
+  }
+}
+
+function collectUniqueBuildingPricePairs() {
+  const seen = new Set();
+  const pairs = [];
+  repoProps.concat(komaProps).forEach(function (p) {
+    if (!p.n || !p.p) return;
+    const buildingName = suumoSearchKeyword(p.n);
+    const price = Math.round(Number(p.p));
+    if (!buildingName || !price) return;
+    const key = otherCountCacheKey(buildingName, price);
+    if (seen.has(key)) return;
+    seen.add(key);
+    pairs.push({ buildingName: buildingName, price: price, key: key });
+  });
+  return pairs;
+}
+
+function needsOtherCountRefresh(key) {
+  const info = otherCountCache.get(key);
+  if (!info || !info.checked_at) return true;
+  return Date.now() - new Date(info.checked_at).getTime() > OTHER_COUNT_STALE_MS;
+}
+
+function setOtherCountProgress(done, total) {
+  const wrap = document.getElementById('other-count-progress');
+  const text = document.getElementById('other-count-progress-text');
+  const fill = document.getElementById('other-count-progress-fill');
+  if (!wrap || !text || !fill) return;
+  wrap.style.display = 'block';
+  text.textContent = done + ' / ' + total + '件処理中…';
+  fill.style.width = (total ? Math.round((done / total) * 100) : 0) + '%';
+}
+
+function hideOtherCountProgress() {
+  const wrap = document.getElementById('other-count-progress');
+  if (wrap) wrap.style.display = 'none';
+}
+
+function setOtherCountBusy(busy) {
+  otherCountRunning = busy;
+  const btn = document.getElementById('other-count-btn');
+  if (btn) btn.disabled = busy;
+}
+
+async function fetchOtherCompanyCount(buildingName, price) {
+  const res = await fetch(OTHER_COUNT_FN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ buildingName: buildingName, price: price }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '他社件数取得に失敗しました');
+  return data;
+}
+
+async function upsertOtherCountResult(data) {
+  const row = {
+    building_name: data.buildingName,
+    price: data.price,
+    other_count: data.otherCount,
+    checked_at: data.checkedAt,
+  };
+  const { error } = await sb.from(SB_OTHER_COUNTS).upsert(row, { onConflict: 'building_name,price' });
+  if (error) throw error;
+  otherCountCache.set(otherCountCacheKey(data.buildingName, data.price), {
+    other_count: data.otherCount,
+    checked_at: data.checkedAt,
+  });
+}
+
+async function triggerOtherCountUpdate() {
+  if (otherCountRunning) return;
+  if (!repoProps.length && !komaProps.length) {
+    showToast('物件データがありません', 4000);
+    return;
+  }
+
+  const allPairs = collectUniqueBuildingPricePairs();
+  const todo = allPairs.filter(function (p) { return needsOtherCountRefresh(p.key); });
+  if (!todo.length) {
+    showToast('更新対象なし（全件7日以内に取得済み）', 5000);
+    return;
+  }
+
+  setOtherCountBusy(true);
+  let done = 0;
+  let errors = 0;
+  const total = todo.length;
+  setOtherCountProgress(0, total);
+  showToast('他社件数の取得を開始…', 2000);
+
+  let index = 0;
+  async function worker() {
+    while (index < todo.length) {
+      const i = index++;
+      const item = todo[i];
+      try {
+        const data = await fetchOtherCompanyCount(item.buildingName, item.price);
+        await upsertOtherCountResult(data);
+      } catch (e) {
+        errors += 1;
+        console.error('他社件数エラー:', item, e);
+      }
+      done += 1;
+      setOtherCountProgress(done, total);
+      await new Promise(function (r) { setTimeout(r, 300); });
+    }
+  }
+
+  try {
+    const workers = [];
+    for (let w = 0; w < OTHER_COUNT_CONCURRENCY; w++) workers.push(worker());
+    await Promise.all(workers);
+    renderCards();
+    const msg = errors
+      ? '他社件数更新完了（' + done + '/' + total + '、エラー ' + errors + '件）'
+      : '他社件数更新完了（' + done + '/' + total + '件）';
+    showToast(msg, 6000);
+  } catch (e) {
+    showToast('他社件数更新エラー: ' + e.message, 6000);
+  } finally {
+    setOtherCountBusy(false);
+    hideOtherCountProgress();
+  }
 }
 
 /* ============================================================

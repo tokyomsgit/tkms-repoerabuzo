@@ -40,3 +40,21 @@ create policy "repoerabuzo_templates_update_anon"
   on public.repoerabuzo_templates for update to anon using (true) with check (true);
 create policy "repoerabuzo_templates_delete_anon"
   on public.repoerabuzo_templates for delete to anon using (true);
+
+-- 他社件数キャッシュ（SUUMO 検索結果）
+create table if not exists public.repoerabuzo_other_counts (
+  building_name text not null,
+  price int not null,
+  other_count int not null default 0,
+  checked_at timestamptz not null default now(),
+  primary key (building_name, price)
+);
+
+alter table public.repoerabuzo_other_counts enable row level security;
+
+create policy "repoerabuzo_other_counts_select_anon"
+  on public.repoerabuzo_other_counts for select to anon using (true);
+create policy "repoerabuzo_other_counts_insert_anon"
+  on public.repoerabuzo_other_counts for insert to anon with check (true);
+create policy "repoerabuzo_other_counts_update_anon"
+  on public.repoerabuzo_other_counts for update to anon using (true) with check (true);
