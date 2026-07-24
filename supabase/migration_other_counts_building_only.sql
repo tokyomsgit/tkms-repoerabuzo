@@ -1,5 +1,6 @@
--- 他社件数：マンション名単位に統一（価格・面積での絞り込みをやめる）
--- Supabase Dashboard → SQL Editor で実行
+-- 他社件数：マンション名単位に統一（必須マイグレーション）
+-- エラー "there is no unique or exclusion constraint matching the ON CONFLICT specification"
+-- が出ている場合は、このSQLを Supabase Dashboard → SQL Editor で実行してください。
 
 truncate table public.repoerabuzo_other_counts;
 

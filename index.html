@@ -1724,7 +1724,14 @@ async function upsertOtherCountResult(data) {
     checked_at: data.checkedAt,
   };
   const { error } = await sb.from(SB_OTHER_COUNTS).upsert(row, { onConflict: 'building_name' });
-  if (error) throw error;
+  if (error) {
+    if (/ON CONFLICT|unique or exclusion constraint/i.test(error.message || '')) {
+      throw new Error(
+        'DBの形式が古いです。Supabaseで migration_other_counts_building_only.sql を実行してください'
+      );
+    }
+    throw error;
+  }
   otherCountCache.set(data.buildingName, {
     other_count: data.otherCount,
     checked_at: data.checkedAt,
