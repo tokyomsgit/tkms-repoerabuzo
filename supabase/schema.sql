@@ -72,3 +72,25 @@ create policy "repoerabuzo_other_counts_insert_anon"
 drop policy if exists "repoerabuzo_other_counts_update_anon" on public.repoerabuzo_other_counts;
 create policy "repoerabuzo_other_counts_update_anon"
   on public.repoerabuzo_other_counts for update to anon using (true) with check (true);
+
+-- 物件移動の共同編集（操作ログ）
+create table if not exists public.repoerabuzo_collab_moves (
+  id bigserial primary key,
+  property_name text not null,
+  from_pane text not null check (from_pane in ('repo', 'koma')),
+  client_id text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists repoerabuzo_collab_moves_id_idx
+  on public.repoerabuzo_collab_moves (id);
+
+alter table public.repoerabuzo_collab_moves enable row level security;
+
+drop policy if exists "repoerabuzo_collab_moves_select_anon" on public.repoerabuzo_collab_moves;
+create policy "repoerabuzo_collab_moves_select_anon"
+  on public.repoerabuzo_collab_moves for select to anon using (true);
+
+drop policy if exists "repoerabuzo_collab_moves_insert_anon" on public.repoerabuzo_collab_moves;
+create policy "repoerabuzo_collab_moves_insert_anon"
+  on public.repoerabuzo_collab_moves for insert to anon with check (true);

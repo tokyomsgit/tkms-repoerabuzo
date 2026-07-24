@@ -73,6 +73,10 @@ body{
 .header-left{display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0}
 .header-meta{display:flex;flex-direction:column;gap:2px;font-weight:700;line-height:1.4}
 #import-time-label{font-size:13px;color:#333}
+.collab-status{font-size:12px;font-weight:700;white-space:nowrap}
+.collab-status-on{color:#0a7a0a}
+.collab-status-off{color:#999}
+.collab-status-sync{color:#cc9900}
 .settings-sync-note{font-size:13px;color:#666;line-height:1.5}
 .hdr-menu-wrap{position:relative;flex-shrink:0}
 .hdr-menu-btn{
@@ -590,6 +594,7 @@ body{
       <div class="logo">レポ選ぶぞう</div>
       <div class="header-meta">
         <span id="import-time-label">取込：—</span>
+        <span id="collab-status" class="collab-status collab-status-off">● 共同編集：接続中…</span>
       </div>
     </div>
     <div class="hdr-menu-wrap" id="hdr-menu-wrap">
@@ -695,6 +700,10 @@ body{
       <button class="text-modal-close" onclick="closeSettingsModal()">×</button>
     </div>
     <div class="text-modal-body">
+      <div class="settings-section">
+        <div class="settings-section-title">共同編集</div>
+        <p class="settings-sync-note">物件のレポ↔コマ移動は全員でリアルタイム共有されます。ヘッダーの「共同編集中」表示で接続状態を確認できます。下書きの復元はこの端末のみ反映されます。</p>
+      </div>
       <div class="settings-section">
         <div class="settings-section-title">データ更新</div>
         <p class="settings-sync-note" id="settings-sync-note">自動更新：約15分ごと（Drive → Supabase）</p>
@@ -802,6 +811,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const SB_IMPORTS = 'repoerabuzo_imports';
 const SB_TEMPLATES = 'repoerabuzo_templates';
 const SB_OTHER_COUNTS = 'repoerabuzo_other_counts';
+const SB_COLLAB_MOVES = 'repoerabuzo_collab_moves';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* 他社件数（Netlify Function → Supabase キャッシュ） */
@@ -856,6 +866,11 @@ let repoProps = [];
 let komaProps = [];
 let movedToKoma = new Set();
 let movedToRepo = new Set();
+
+/* 共同編集（物件移動） */
+let collabClientId = '';
+let collabLastMoveId = 0;
+let collabChannel = null;
 
 // ソート状態（レポ・コマ共通）
 const sortState = { key: 'pv', dir: 'desc' };
@@ -955,6 +970,8 @@ async function initApp() {
   await loadTemplates();
   await loadDrafts();
   await loadOtherCounts();
+  await loadCollabMoves();
+  startCollabRealtime();
   if (hasData) {
     buildAreaSelects();
     renderCards();
@@ -1853,9 +1870,35 @@ function closeOtherCountResultModal() {
 }
 
 /* ============================================================
-   カード移動ロジック（クリック・D&D共通）
+   共同編集（物件移動 — Supabase Realtime）
 ============================================================ */
-function moveCardLogic(n, currentPane) {
+function getCollabClientId() {
+  let id = sessionStorage.getItem('repoerabuzo_collab_client_id');
+  if (!id) {
+    id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    sessionStorage.setItem('repoerabuzo_collab_client_id', id);
+  }
+  return id;
+}
+
+function updateCollabStatus(mode) {
+  const el = document.getElementById('collab-status');
+  if (!el) return;
+  if (mode === 'on') {
+    el.textContent = '● 共同編集中';
+    el.className = 'collab-status collab-status-on';
+  } else if (mode === 'sync') {
+    el.textContent = '● 共同編集：同期中…';
+    el.className = 'collab-status collab-status-sync';
+  } else {
+    el.textContent = '● 共同編集：未接続';
+    el.className = 'collab-status collab-status-off';
+  }
+}
+
+function applyMoveLogic(n, currentPane) {
   if (currentPane === 'repo') {
     if (movedToRepo.has(n)) movedToRepo.delete(n);
     else if (movedToKoma.has(n)) movedToKoma.delete(n);
@@ -1865,7 +1908,95 @@ function moveCardLogic(n, currentPane) {
     else if (movedToRepo.has(n)) movedToRepo.delete(n);
     else movedToRepo.add(n);
   }
+}
+
+async function loadCollabMoves() {
+  collabClientId = getCollabClientId();
+  try {
+    const { data, error } = await sb
+      .from(SB_COLLAB_MOVES)
+      .select('id, property_name, from_pane')
+      .order('id', { ascending: true });
+    if (error) throw error;
+    movedToKoma = new Set();
+    movedToRepo = new Set();
+    (data || []).forEach(function (m) {
+      applyMoveLogic(m.property_name, m.from_pane);
+    });
+    if (data && data.length) {
+      collabLastMoveId = data[data.length - 1].id;
+    }
+  } catch (e) {
+    console.error('共同編集の読込エラー:', e);
+    updateCollabStatus('off');
+  }
+}
+
+function startCollabRealtime() {
+  if (collabChannel) {
+    sb.removeChannel(collabChannel);
+    collabChannel = null;
+  }
+  collabChannel = sb
+    .channel('repoerabuzo-collab-moves')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: SB_COLLAB_MOVES,
+    }, function (payload) {
+      const move = payload.new;
+      if (!move) return;
+      if (move.client_id === collabClientId) return;
+      if (move.id <= collabLastMoveId) return;
+      collabLastMoveId = move.id;
+      applyMoveLogic(move.property_name, move.from_pane);
+      renderCards();
+    })
+    .subscribe(function (status) {
+      if (status === 'SUBSCRIBED') {
+        updateCollabStatus('on');
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        updateCollabStatus('off');
+      }
+    });
+}
+
+async function broadcastCollabMove(n, fromPane) {
+  updateCollabStatus('sync');
+  try {
+    const { data, error } = await sb
+      .from(SB_COLLAB_MOVES)
+      .insert({
+        property_name: n,
+        from_pane: fromPane,
+        client_id: collabClientId,
+      })
+      .select('id')
+      .single();
+    if (error) {
+      if (/schema cache|Could not find the table/i.test(error.message || '')) {
+        throw new Error('Supabaseで migration_collab_moves.sql を実行してください');
+      }
+      throw error;
+    }
+    if (data && data.id > collabLastMoveId) {
+      collabLastMoveId = data.id;
+    }
+    updateCollabStatus('on');
+  } catch (e) {
+    console.error('共同編集の送信エラー:', e);
+    updateCollabStatus('off');
+    showToast('共同編集の同期に失敗: ' + (e.message || e), 5000);
+  }
+}
+
+/* ============================================================
+   カード移動ロジック（クリック・D&D共通）
+============================================================ */
+function moveCardLogic(n, currentPane) {
+  applyMoveLogic(n, currentPane);
   renderCards();
+  void broadcastCollabMove(n, currentPane);
 }
 
 // 後方互換（onclick属性から呼ばれる場合）
