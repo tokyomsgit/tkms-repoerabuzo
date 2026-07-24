@@ -32,19 +32,15 @@ body{
 #import-time-label{font-size:13px;color:#333}
 #import-freq-label{font-size:11px;color:#888}
 .hdr-btns{display:flex;gap:10px;align-items:center;flex-shrink:0}
-.import-btn{
-  padding:8px 18px;
-  background:#111;color:#fff;
-  border:none;cursor:pointer;
-  font-family:inherit;font-weight:700;font-size:14px;
-  letter-spacing:.04em;
+.hdr-btn{
+  padding:8px 14px;
+  background:#e8e8e8;color:#333;
+  border:1px solid #ccc;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:13px;
+  letter-spacing:.02em;
 }
-.import-btn:hover{background:#333}
-.drive-hdr-btn{background:#1a56a0}
-.drive-hdr-btn:hover{background:#134080}
-.other-count-btn{background:#006633}
-.other-count-btn:hover{background:#004422}
-.other-count-btn:disabled{background:#999;cursor:not-allowed}
+.hdr-btn:hover{background:#ddd}
+.hdr-btn:disabled{background:#f0f0f0;color:#999;cursor:not-allowed;border-color:#ddd}
 .other-count-progress{
   position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
   background:#111;color:#fff;padding:10px 18px;border-radius:8px;
@@ -95,8 +91,10 @@ body{
 .quota-diff.under{color:#0055cc}
 .quota-diff.ok{color:#007700}
 
-.pane-left .pane-header{background:#FFD700}
-.pane-right .pane-header{background:#40C0F0}
+.pane-left{background:#fff}
+.pane-right{background:#fff}
+.pane-left .pane-header{background:#f5f5f5}
+.pane-right .pane-header{background:#f5f5f5}
 
 .text-output-btn{
   padding:6px 14px;
@@ -165,6 +163,17 @@ body{
 .tmpl-btn.del{color:#cc0000;border-color:#cc0000}
 .tmpl-btn.del:hover{background:#fff0f0}
 
+/* 設定モーダル */
+.settings-section{
+  margin-bottom:20px;padding-bottom:16px;
+  border-bottom:2px solid #eee;
+}
+.settings-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.settings-section-title{
+  font-size:14px;font-weight:900;color:#444;margin-bottom:10px;
+}
+.settings-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
 /* カードリスト */
 .card-list{
   flex:1;overflow-y:auto;
@@ -182,14 +191,13 @@ body{
   cursor:pointer;
   user-select:none;
   background:#fff;
+  border:1px solid #111;
   transition:transform .1s, box-shadow .1s;
   gap:6px;
 }
 .prop-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
 .prop-card:active{transform:translateY(0)}
-/* 元種別で枠色（ペイン関係なく固定） */
-.prop-card.prop-repo{border:3px solid #cc0000}
-.prop-card.prop-koma{border:3px solid #0090cc}
+.prop-card.prop-moved{border:3px solid #cc0000}
 
 .card-inner{flex:1;min-width:0}
 .card-name{
@@ -357,7 +365,7 @@ body{
   .logo{font-size:17px}
   #import-time-label{font-size:12px}
   #import-freq-label{font-size:10px}
-  .import-btn{padding:6px 12px;font-size:13px}
+  .hdr-btn{padding:6px 10px;font-size:12px}
 
   /* ツールバー横スクロール */
   .shared-toolbar{padding:6px 8px;gap:4px}
@@ -416,8 +424,9 @@ body{
     </div>
   </div>
   <div class="hdr-btns">
-    <button class="import-btn other-count-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()">他社件数を更新</button>
-    <button class="import-btn drive-hdr-btn gas-sync-btn" onclick="triggerGasSync()">🔄 Drive今すぐ同期</button>
+    <button class="hdr-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()">他社件数を更新</button>
+    <button class="hdr-btn gas-sync-btn" onclick="triggerGasSync()">Drive同期</button>
+    <button class="hdr-btn" onclick="openSettingsModal()" title="設定">⚙ 設定</button>
   </div>
 </div>
 
@@ -443,24 +452,12 @@ body{
         <div id="area-dd-list"></div>
       </div>
     </div>
-    <span class="tb-label" style="margin-left:8px">テンプレ：</span>
-    <select class="tmpl-select" id="shared-tmpl-select" onchange="loadTemplate()">
-      <option value="">選択…</option>
-    </select>
-    <input class="tmpl-input" id="shared-tmpl-name" placeholder="テンプレート名">
-    <button class="tmpl-btn save" onclick="saveTemplate()">保存</button>
-    <button class="tmpl-btn del"  onclick="deleteTemplate()">削除</button>
-  </div>
-  <div class="toolbar-row">
-    <span class="tb-label">途中保存：</span>
-    <input class="tmpl-input" id="draft-name-input" placeholder="保存名（例：港区チーム）">
-    <button class="tmpl-btn save" onclick="saveDraft()">💾 保存</button>
-    <div id="draft-list" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
   </div>
   <div class="toolbar-row">
     <span class="tb-label">ソート：</span>
     <button class="sort-btn" id="sort-pv"   onclick="setSort('pv')">PV <span class="sort-dir" id="dir-pv">↓</span></button>
     <button class="sort-btn" id="sort-r"    onclick="setSort('r')">反響 <span class="sort-dir" id="dir-r">↓</span></button>
+    <button class="sort-btn" id="sort-other" onclick="setSort('other')">他社 <span class="sort-dir" id="dir-other">↓</span></button>
     <button class="sort-btn" id="sort-p"    onclick="setSort('p')">価格 <span class="sort-dir" id="dir-p">↓</span></button>
     <button class="sort-btn" id="sort-s"    onclick="setSort('s')">面積 <span class="sort-dir" id="dir-s">↓</span></button>
     <button class="sort-btn" id="sort-area" onclick="setSort('area')">エリア <span class="sort-dir" id="dir-area">↑</span></button>
@@ -481,7 +478,6 @@ body{
         </span>
       </div>
       <div class="pane-header-btns">
-        <button class="removal-output-btn" onclick="openRemovalModal()">外しリスト</button>
         <button class="text-output-btn" onclick="openTextModal('repo')">テキスト出力</button>
       </div>
     </div>
@@ -501,13 +497,45 @@ body{
           <span class="quota-diff" id="koma-diff"></span>
         </span>
       </div>
-      <button class="text-output-btn" onclick="openTextModal('koma')">テキスト出力</button>
+      <div class="pane-header-btns">
+        <button class="removal-output-btn" onclick="openRemovalModal()">外し出力</button>
+      </div>
     </div>
     <div class="card-list" id="koma-list"></div>
   </div>
 </div>
 
 <!-- テキスト出力モーダル -->
+<div class="text-modal-overlay" id="settings-modal-overlay" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="text-modal" style="max-width:520px">
+    <div class="text-modal-header">
+      <span class="text-modal-title">⚙ 設定</span>
+      <button class="text-modal-close" onclick="closeSettingsModal()">×</button>
+    </div>
+    <div class="text-modal-body">
+      <div class="settings-section">
+        <div class="settings-section-title">エリアテンプレート</div>
+        <div class="settings-row">
+          <select class="tmpl-select" id="shared-tmpl-select" onchange="loadTemplate()">
+            <option value="">選択…</option>
+          </select>
+          <input class="tmpl-input" id="shared-tmpl-name" placeholder="テンプレート名" style="flex:1;min-width:120px">
+          <button class="tmpl-btn save" onclick="saveTemplate()">保存</button>
+          <button class="tmpl-btn del" onclick="deleteTemplate()">削除</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">途中保存</div>
+        <div class="settings-row">
+          <input class="tmpl-input" id="draft-name-input" placeholder="保存名（例：港区チーム）" style="flex:1;min-width:160px">
+          <button class="tmpl-btn save" onclick="saveDraft()">💾 保存</button>
+        </div>
+        <div id="draft-list" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="text-modal-overlay" id="text-modal-overlay" onclick="if(event.target===this)closeTextModal()">
   <div class="text-modal">
     <div class="text-modal-header">
@@ -530,11 +558,11 @@ body{
   </div>
 </div>
 
-<!-- 外しリストモーダル -->
+<!-- 外し出力モーダル -->
 <div class="text-modal-overlay" id="removal-modal-overlay" onclick="if(event.target===this)closeRemovalModal()">
   <div class="text-modal">
     <div class="text-modal-header">
-      <span class="text-modal-title" id="removal-modal-title">外しリスト</span>
+      <span class="text-modal-title" id="removal-modal-title">外し出力</span>
       <button class="text-modal-close" onclick="closeRemovalModal()">×</button>
     </div>
     <div class="text-modal-body">
@@ -548,7 +576,7 @@ body{
           <label class="mail-area-option"><input type="radio" name="removal-mail-area" value="城南">城南</label>
         </div>
       </div>
-      <button class="text-copy-btn" onclick="sendRemovalMail()" style="margin-top:6px;background:#993333">📧 外しリストをメール作成（all@tokyoms.co.jp）</button>
+      <button class="text-copy-btn" onclick="sendRemovalMail()" style="margin-top:6px;background:#993333">📧 外し出力をメール作成（all@tokyoms.co.jp）</button>
     </div>
   </div>
 </div>
@@ -958,7 +986,7 @@ function setSort(key) {
 }
 
 function updateSortUI() {
-  const keys = ['pv','r','p','s','area'];
+  const keys = ['pv','r','other','p','s','area'];
   keys.forEach(k => {
     const btn = document.getElementById(`sort-${k}`);
     const dir = document.getElementById(`dir-${k}`);
@@ -975,6 +1003,13 @@ function sortProps(arr) {
   const d = dir === 'desc' ? -1 : 1;
   return [...arr].sort((a, b) => {
     if (key === 'area') return (a._area < b._area ? -1 : a._area > b._area ? 1 : 0) * d;
+    if (key === 'other') {
+      const av = getOtherCountForProp(a);
+      const bv = getOtherCountForProp(b);
+      const aVal = av === null ? -1 : av;
+      const bVal = bv === null ? -1 : bv;
+      return (bVal - aVal) * d;
+    }
     return ((b[key] || 0) - (a[key] || 0)) * d;
   });
 }
@@ -1163,13 +1198,11 @@ function renderList(containerId, props, pane) {
       const cacheKey = buildingName + '|' + Math.round(Number(p.p));
       const otherInfo = otherCountCache.get(cacheKey);
       const otherBadge = otherInfo
-        ? `<span style="color:#0066cc">他社 ${otherInfo.other_count}件</span>`
+        ? `<span style="color:#cc0000">他社 ${otherInfo.other_count}件</span>`
         : `<span style="color:#999">他社未取得</span>`;
 
       const card = document.createElement('div');
-      // 元の種別（_type）で枠色を決定（移動しても色は変わらない）
-      const origType = p._type === 'repo' ? 'repo' : 'koma';
-      card.className = 'prop-card prop-' + origType;
+      card.className = 'prop-card' + (isMoved ? ' prop-moved' : '');
       card.draggable = true;
       card.dataset.name = p.n;
       card.dataset.pane = pane;
@@ -1286,6 +1319,12 @@ function suumoSearchUrl(name) {
 ============================================================ */
 function otherCountCacheKey(buildingName, price) {
   return buildingName + '|' + Math.round(Number(price));
+}
+
+function getOtherCountForProp(p) {
+  if (!p || !p.n || !p.p) return null;
+  const info = otherCountCache.get(otherCountCacheKey(suumoSearchKeyword(p.n), p.p));
+  return info ? info.other_count : null;
 }
 
 async function loadOtherCounts() {
@@ -1488,7 +1527,7 @@ function getRemovalProps() {
 
 function openRemovalModal() {
   const props = getRemovalProps();
-  document.getElementById('removal-modal-title').textContent = '外しリスト（' + props.length + '件）';
+  document.getElementById('removal-modal-title').textContent = '外し出力（' + props.length + '件）';
   document.getElementById('removal-output-area').value = props.map(p => p.n).join('\n');
   document.querySelectorAll('input[name="removal-mail-area"]').forEach(r => { r.checked = false; });
   document.getElementById('removal-modal-overlay').classList.add('open');
@@ -1496,11 +1535,18 @@ function openRemovalModal() {
 
 function closeRemovalModal() { document.getElementById('removal-modal-overlay').classList.remove('open'); }
 
+function openSettingsModal() {
+  document.getElementById('settings-modal-overlay').classList.add('open');
+}
+function closeSettingsModal() {
+  document.getElementById('settings-modal-overlay').classList.remove('open');
+}
+
 function copyRemovalText() {
   const ta = document.getElementById('removal-output-area');
   ta.select();
   document.execCommand('copy');
-  showToast('外しリストをコピーしました');
+  showToast('外し出力をコピーしました');
 }
 
 const MAIL_ALL = 'all@tokyoms.co.jp';
@@ -1514,7 +1560,7 @@ function sendRemovalMail() {
 
   const ta = document.getElementById('removal-output-area');
   if (!ta.value.trim()) {
-    showToast('外しリストは0件です', 3500);
+    showToast('外し出力は0件です', 3500);
     return;
   }
 
@@ -1531,7 +1577,7 @@ function sendRemovalMail() {
     '_blank'
   );
 
-  showToast('📋 外しリストをコピーしました！Gmailに貼り付けて送信してください', 4000);
+  showToast('📋 外し出力をコピーしました！Gmailに貼り付けて送信してください', 4000);
 }
 
 function getMailArea(radioName) {
