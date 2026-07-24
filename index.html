@@ -795,7 +795,6 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 /* 他社件数（Netlify Function → Supabase キャッシュ） */
 const OTHER_COUNT_FN = '/.netlify/functions/other-company-count';
 const OTHER_COUNT_CONCURRENCY = 4;
-const OTHER_COUNT_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 let otherCountCache = new Map();
 let otherCountRunning = false;
 
@@ -1685,12 +1684,6 @@ function collectUniqueBuildingPricePairs() {
   return pairs;
 }
 
-function needsOtherCountRefresh(key) {
-  const info = otherCountCache.get(key);
-  if (!info || !info.checked_at) return true;
-  return Date.now() - new Date(info.checked_at).getTime() > OTHER_COUNT_STALE_MS;
-}
-
 function setOtherCountProgress(done, total) {
   const wrap = document.getElementById('other-count-progress');
   const text = document.getElementById('other-count-progress-text');
@@ -1746,11 +1739,11 @@ async function triggerOtherCountUpdate() {
   }
 
   const allPairs = collectUniqueBuildingPricePairs();
-  const todo = allPairs.filter(function (p) { return needsOtherCountRefresh(p.key); });
-  if (!todo.length) {
-    showToast('更新対象なし（全件7日以内に取得済み）', 5000);
+  if (!allPairs.length) {
+    showToast('更新対象がありません', 4000);
     return;
   }
+  const todo = allPairs;
 
   setOtherCountBusy(true);
   let success = 0;
