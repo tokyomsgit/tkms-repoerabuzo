@@ -13,9 +13,9 @@
   --koma-pane-color:#7ec8e8;
   --mobile-font-scale:1;
 }
-html.mobile-fs-s{--mobile-font-scale:0.88}
-html.mobile-fs-m{--mobile-font-scale:1}
-html.mobile-fs-l{--mobile-font-scale:1.15}
+html.mobile-fs-s{--mobile-font-scale:1.15}
+html.mobile-fs-m{--mobile-font-scale:1.31}
+html.mobile-fs-l{--mobile-font-scale:1.50}
 body{
   font-family:'Noto Sans JP','Hiragino Sans',sans-serif;
   font-weight:700;
@@ -451,8 +451,8 @@ body{
   .site-main > .container.main-layout{
     border:none;padding:0;max-width:none;flex:1;min-height:0;display:flex;flex-direction:column;
   }
-  .site-toolbar .container{border-bottom:none}
-  .shared-toolbar{padding:8px 0;gap:8px}
+  .site-toolbar .container{border-bottom:none;overflow:visible}
+  .shared-toolbar{padding:8px 0;gap:8px;overflow:visible}
 
   /* ヘッダー */
   .header{
@@ -484,8 +484,11 @@ body{
   .btn-label-short{display:inline}
 
   /* ツールバー */
-  .toolbar-row{flex-wrap:nowrap;overflow-x:auto;gap:6px;-webkit-overflow-scrolling:touch}
-  .toolbar-row::-webkit-scrollbar{height:0}
+  .toolbar-row-area{width:100%}
+  .toolbar-row-area .area-multi-wrap{display:block;width:100%}
+  .toolbar-row-area .area-multi-btn{width:100%;justify-content:space-between;min-height:40px}
+  .toolbar-row-scroll{flex-wrap:nowrap;overflow-x:auto;gap:6px;-webkit-overflow-scrolling:touch}
+  .toolbar-row-scroll::-webkit-scrollbar{height:0}
   .tb-label{font-size:calc(12px * var(--mobile-font-scale));flex-shrink:0}
   .area-multi-btn{font-size:calc(13px * var(--mobile-font-scale));min-width:100px;padding:8px 10px;min-height:40px}
   .sort-btn{font-size:calc(12px * var(--mobile-font-scale));padding:8px 10px;flex-shrink:0;min-height:40px}
@@ -541,7 +544,8 @@ body{
 
   /* エリアドロップダウン */
   .area-dropdown{
-    left:0;right:0;width:auto;max-height:50vh;overflow-y:auto;
+    position:fixed;left:10px;right:10px;width:auto;max-height:50vh;overflow-y:auto;
+    z-index:800;
   }
 
   /* モーダル */
@@ -587,9 +591,9 @@ body{
 <div class="site-toolbar">
   <div class="container">
     <div class="shared-toolbar">
-  <div class="toolbar-row">
+  <div class="toolbar-row toolbar-row-area">
     <div class="area-multi-wrap" id="area-multi-wrap">
-      <button class="area-multi-btn" id="area-multi-btn" onclick="toggleAreaDropdown()">
+      <button type="button" class="area-multi-btn" id="area-multi-btn" onclick="toggleAreaDropdown(event)">
         <span id="area-multi-label">全エリア</span>
         <span style="font-size:11px;margin-left:6px">▼</span>
       </button>
@@ -602,7 +606,7 @@ body{
       </div>
     </div>
   </div>
-  <div class="toolbar-row">
+  <div class="toolbar-row toolbar-row-scroll">
     <button class="sort-btn" id="sort-pv"   onclick="setSort('pv')">PV <span class="sort-dir" id="dir-pv">↓</span></button>
     <button class="sort-btn" id="sort-r"    onclick="setSort('r')">反響 <span class="sort-dir" id="dir-r">↓</span></button>
     <button class="sort-btn" id="sort-other" onclick="setSort('other')">他社 <span class="sort-dir" id="dir-other">↓</span></button>
@@ -987,7 +991,8 @@ const MOBILE_FONT_SIZE_KEY = 'repoSelectApp_mobileFontSize';
 function loadMobileFontSize() {
   try {
     var v = localStorage.getItem(MOBILE_FONT_SIZE_KEY);
-    return (v === 's' || v === 'l') ? v : 'm';
+    if (v === 'l') return 's';
+    return (v === 's' || v === 'm') ? v : 'm';
   } catch (e) {
     return 'm';
   }
@@ -1227,17 +1232,33 @@ function updateAreaLabel() {
   }
 }
 
-function toggleAreaDropdown() {
+function toggleAreaDropdown(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   const dd = document.getElementById('area-dropdown');
+  const btn = document.getElementById('area-multi-btn');
   const isOpen = dd.classList.toggle('open');
   if (isOpen) {
-    setTimeout(() => document.addEventListener('click', closeAreaDropdownOutside, { once: true }), 0);
+    if (isMobileLayout() && btn) {
+      const rect = btn.getBoundingClientRect();
+      dd.style.top = (rect.bottom + 4) + 'px';
+    } else {
+      dd.style.top = '';
+    }
+    setTimeout(function () {
+      document.addEventListener('click', closeAreaDropdownOutside, { once: true });
+    }, 0);
+  } else {
+    dd.style.top = '';
   }
 }
 function closeAreaDropdownOutside(e) {
   const wrap = document.getElementById('area-multi-wrap');
   if (wrap && !wrap.contains(e.target)) {
-    document.getElementById('area-dropdown')?.classList.remove('open');
+    const dd = document.getElementById('area-dropdown');
+    if (dd) {
+      dd.classList.remove('open');
+      dd.style.top = '';
+    }
   }
 }
 function areaSelectAll() {
