@@ -11,26 +11,61 @@
 body{
   font-family:'Noto Sans JP','Hiragino Sans',sans-serif;
   font-weight:700;
-  background:#fff;
+  background:#ececec;
   color:#111;
   min-height:100vh;
   display:flex;
   flex-direction:column;
 }
+.container{
+  width:100%;
+  max-width:960px;
+  margin:0 auto;
+  padding:0 16px;
+}
+.site-header{
+  width:100%;
+  background:#fff;
+  border-bottom:3px solid #111;
+  flex-shrink:0;
+}
+.site-toolbar{
+  width:100%;
+  background:#f5f5f5;
+  flex-shrink:0;
+}
+.site-toolbar .container{
+  border-bottom:3px solid #111;
+}
+.site-main{
+  width:100%;
+  background:#ececec;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  padding-bottom:16px;
+}
+.site-main > .container.main-layout{
+  flex:1;
+  min-height:0;
+  background:#fff;
+  border:3px solid #111;
+  border-top:none;
+  padding:0;
+  max-width:960px;
+}
 
 /* ヘッダー */
 .header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 20px;
-  background:#fff;
-  border-bottom:3px solid #111;
-  flex-shrink:0;
+  padding:10px 0;
 }
 .logo{font-size:22px;font-weight:900;letter-spacing:.05em;color:#111}
 .header-left{display:flex;align-items:center;gap:18px;flex-wrap:wrap;min-width:0}
 .header-meta{display:flex;flex-direction:column;gap:2px;font-weight:700;line-height:1.4}
 #import-time-label{font-size:13px;color:#333}
-#import-freq-label{font-size:11px;color:#888}
+.settings-sync-note{font-size:13px;color:#666;line-height:1.5}
 .hdr-btns{display:flex;gap:10px;align-items:center;flex-shrink:0}
 .hdr-btn{
   padding:8px 14px;
@@ -58,10 +93,8 @@ body{
 .main-layout{
   display:grid;
   grid-template-columns:1fr 4px 1fr;
-  height:calc(100vh - 57px);
-  /* バナー表示時は自動で縮む */
-  min-height:0;
   flex:1;
+  min-height:0;
 }
 .divider{background:#111}
 
@@ -73,6 +106,7 @@ body{
   padding:10px 14px;
   border-bottom:2px solid #111;
   flex-shrink:0;
+  width:100%;
 }
 .pane-title{font-size:18px;font-weight:900}
 .pane-title-bar{display:flex;gap:8px;align-items:center}
@@ -114,10 +148,7 @@ body{
 
 /* 共通ツールバー */
 .shared-toolbar{
-  padding:8px 16px;
-  border-bottom:3px solid #111;
-  background:#f5f5f5;
-  flex-shrink:0;
+  padding:8px 0;
   display:flex;gap:16px;align-items:center;flex-wrap:wrap;
 }
 .toolbar-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -177,8 +208,9 @@ body{
 /* カードリスト */
 .card-list{
   flex:1;overflow-y:auto;
-  padding:10px;
+  padding:10px 12px;
   display:flex;flex-direction:column;gap:6px;
+  width:100%;
 }
 .card-list::-webkit-scrollbar{width:4px}
 .card-list::-webkit-scrollbar-thumb{background:#ccc}
@@ -193,18 +225,37 @@ body{
   background:#fff;
   border:1px solid #111;
   transition:transform .1s, box-shadow .1s;
-  gap:6px;
+  gap:10px;
+}
+.prop-card:hover .card-arrow{
+  background:#111;color:#fff;border-color:#111;
 }
 .prop-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
 .prop-card:active{transform:translateY(0)}
-.prop-card.prop-moved{border:3px solid #cc0000}
+.prop-card.prop-moved{
+  border:3px solid #cc0000;
+  background:#fff0f0;
+}
 
 .card-inner{flex:1;min-width:0}
 .card-name{
   font-size:18px;font-weight:900;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  color:#111;margin-bottom:6px;
+  color:#111;
+  display:block;
+  margin-bottom:6px;
 }
+.card-rep{
+  font-size:16px;font-weight:900;
+  color:#cc9900;
+  white-space:nowrap;
+}
+.card-other{
+  font-size:16px;font-weight:900;
+  color:#cc0000;
+  white-space:nowrap;
+}
+.card-other-missing{color:#999}
 .card-name-link{
   color:#111;
   text-decoration:underline;
@@ -215,22 +266,16 @@ body{
   font-size:16px;font-weight:700;color:#333;
 }
 .card-meta span{white-space:nowrap}
-.card-copy-btn{
+.card-arrow{
   flex-shrink:0;
-  padding:4px 7px;
-  border:2px solid #111;
-  background:#fff;
-  cursor:pointer;
-  font-family:inherit;
-  font-weight:700;
-  font-size:13px;
-  border-radius:4px;
-  color:#333;
+  display:flex;align-items:center;justify-content:center;
+  width:40px;height:40px;
+  font-size:22px;font-weight:900;
+  color:#111;background:#f0f0f0;
+  border:2px solid #111;border-radius:10px;
   line-height:1;
+  transition:background .15s,color .15s,border-color .15s;
 }
-.card-copy-btn:hover{background:#eee}
-.card-copy-btn.copied{background:#FFD700;border-color:#cc9900}
-.card-arrow{font-size:14px;font-weight:700;color:#ccc;flex-shrink:0;}
 
 .empty-state{
   display:flex;align-items:center;justify-content:center;
@@ -360,11 +405,15 @@ body{
    レスポンシブ（スマホ 680px以下）
 ============================================================ */
 @media (max-width:680px){
+  .container{padding:0 12px}
+  body{background:#fff}
+  .site-main{background:#fff;padding-bottom:0}
+  .site-main > .container.main-layout{border:none;padding:0;max-width:none}
+  .site-toolbar .container{border-bottom:3px solid #111}
   .header{padding:8px 12px;flex-wrap:wrap;gap:8px}
   .header-left{flex-direction:column;align-items:flex-start;gap:4px}
   .logo{font-size:17px}
   #import-time-label{font-size:12px}
-  #import-freq-label{font-size:10px}
   .hdr-btn{padding:6px 10px;font-size:12px}
 
   /* ツールバー横スクロール */
@@ -401,12 +450,13 @@ body{
   .quota-badge .quota-limit{font-size:13px}
   .quota-badge .quota-diff{font-size:13px}
 
-  /* カード */
+  .card-list{padding:10px 8px}
   .prop-card{padding:8px 10px;gap:4px}
   .card-name{font-size:15px;margin-bottom:3px}
+  .card-rep{font-size:14px}
+  .card-other{font-size:14px}
   .card-meta{font-size:13px;gap:8px}
-  .card-copy-btn{font-size:11px;padding:3px 5px}
-  .card-arrow{font-size:13px}
+  .card-arrow{width:34px;height:34px;font-size:18px;border-radius:8px}
 
   /* モーダル */
   .text-modal{width:96vw;max-height:85vh}
@@ -415,18 +465,19 @@ body{
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <div class="logo">レポ選ぶぞう</div>
-    <div class="header-meta">
-      <span id="import-time-label">取込：—</span>
-      <span id="import-freq-label">自動更新：約15分ごと</span>
+<div class="site-header">
+  <div class="container header">
+    <div class="header-left">
+      <div class="logo">レポ選ぶぞう</div>
+      <div class="header-meta">
+        <span id="import-time-label">取込：—</span>
+      </div>
     </div>
-  </div>
-  <div class="hdr-btns">
-    <button class="hdr-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()">他社件数を更新</button>
-    <button class="hdr-btn gas-sync-btn" onclick="triggerGasSync()">Drive同期</button>
-    <button class="hdr-btn" onclick="openSettingsModal()" title="設定">⚙ 設定</button>
+    <div class="hdr-btns">
+      <button class="hdr-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()">他社件数を更新</button>
+      <button class="hdr-btn gas-sync-btn" onclick="triggerGasSync()">Drive同期</button>
+      <button class="hdr-btn" onclick="openSettingsModal()" title="設定">⚙ 設定</button>
+    </div>
   </div>
 </div>
 
@@ -436,7 +487,9 @@ body{
 </div>
 
 <!-- 共通ツールバー -->
-<div class="shared-toolbar">
+<div class="site-toolbar">
+  <div class="container">
+    <div class="shared-toolbar">
   <div class="toolbar-row">
     <span class="tb-label">エリア：</span>
     <div class="area-multi-wrap" id="area-multi-wrap">
@@ -462,9 +515,12 @@ body{
     <button class="sort-btn" id="sort-s"    onclick="setSort('s')">面積 <span class="sort-dir" id="dir-s">↓</span></button>
     <button class="sort-btn" id="sort-area" onclick="setSort('area')">エリア <span class="sort-dir" id="dir-area">↑</span></button>
   </div>
+    </div>
+  </div>
 </div>
 
-<div class="main-layout">
+<main class="site-main">
+  <div class="container main-layout">
 
   <!-- 左：レポ -->
   <div class="pane pane-left">
@@ -503,7 +559,8 @@ body{
     </div>
     <div class="card-list" id="koma-list"></div>
   </div>
-</div>
+  </div>
+</main>
 
 <!-- テキスト出力モーダル -->
 <div class="text-modal-overlay" id="settings-modal-overlay" onclick="if(event.target===this)closeSettingsModal()">
@@ -513,6 +570,10 @@ body{
       <button class="text-modal-close" onclick="closeSettingsModal()">×</button>
     </div>
     <div class="text-modal-body">
+      <div class="settings-section">
+        <div class="settings-section-title">データ更新</div>
+        <p class="settings-sync-note" id="settings-sync-note">自動更新：約15分ごと（Drive → Supabase）</p>
+      </div>
       <div class="settings-section">
         <div class="settings-section-title">エリアテンプレート</div>
         <div class="settings-row">
@@ -634,23 +695,25 @@ function formatImportTime(iso) {
     + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
-function updateImportMetaDisplay(importedAt, importedBy) {
+function updateImportMetaDisplay(importedAt) {
   const timeEl = document.getElementById('import-time-label');
-  const freqEl = document.getElementById('import-freq-label');
-  if (!timeEl || !freqEl) return;
+  if (!timeEl) return;
 
   if (!importedAt) {
     timeEl.textContent = '取込：未取込';
   } else {
-    const src = importedBy ? '（' + importedBy + '）' : '';
-    timeEl.textContent = '取込：' + formatImportTime(importedAt) + src;
+    timeEl.textContent = '取込：' + formatImportTime(importedAt);
   }
-  freqEl.textContent = '自動更新：約' + DRIVE_SYNC_INTERVAL_MIN + '分ごと（Drive → Supabase）';
+
+  const syncNote = document.getElementById('settings-sync-note');
+  if (syncNote) {
+    syncNote.textContent = '自動更新：約' + DRIVE_SYNC_INTERVAL_MIN + '分ごと（Drive → Supabase）';
+  }
 }
 
 function applyLatestImport(row, silent) {
   lastImportAt = row.imported_at;
-  updateImportMetaDisplay(row.imported_at, row.imported_by);
+  updateImportMetaDisplay(row.imported_at);
   parseProps(row.prop_data, silent);
 }
 
@@ -714,6 +777,41 @@ const QUOTA_TOTAL = { koma: 800, repo: 200 };
 // 世田谷区で数字なし＝エラーとして検出
 function isSetagayaError(area) {
   return area === '世田谷区';
+}
+
+function displayAreaName(area) {
+  if (area === '世田谷区1' || area === '世田谷区2') return '世田谷区';
+  return area;
+}
+
+function getAllRawAreas() {
+  return [...new Set([
+    ...repoProps.map(p => p._area),
+    ...komaProps.map(p => p._area),
+  ])].sort();
+}
+
+function buildAreaFilterGroups(allAreas) {
+  const setagayaKeys = ['世田谷区1', '世田谷区2'].filter(k => allAreas.includes(k));
+  const groups = allAreas
+    .filter(a => a !== '世田谷区1' && a !== '世田谷区2')
+    .map(a => ({ label: displayAreaName(a), keys: [a] }));
+  if (setagayaKeys.length) groups.push({ label: '世田谷区', keys: setagayaKeys });
+  return groups.sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+}
+
+function isAreaGroupSelected(keys) {
+  if (selectedAreas.size === 0) return true;
+  return keys.every(k => selectedAreas.has(k));
+}
+
+function setAreaGroupSelected(keys, checked, allAreas) {
+  if (checked) {
+    keys.forEach(k => selectedAreas.add(k));
+    if (selectedAreas.size === allAreas.length) selectedAreas.clear();
+  } else {
+    keys.forEach(k => selectedAreas.delete(k));
+  }
 }
 
 /* ============================================================
@@ -882,7 +980,7 @@ function checkSetagayaWarning(propData) {
         'color:#7a4f00','font-weight:900','font-size:14px',
         'padding:10px 20px','flex-shrink:0'
       ].join(';');
-      document.querySelector('.shared-toolbar').insertAdjacentElement('afterend', banner);
+      document.querySelector('.site-toolbar').insertAdjacentElement('afterend', banner);
     }
     banner.innerHTML =
       `<div style="display:flex;align-items:center;gap:10px">
@@ -903,32 +1001,27 @@ function checkSetagayaWarning(propData) {
 let selectedAreas = new Set(); // 空=全エリア
 
 function buildAreaSelects() {
-  const allAreas = [...new Set([
-    ...repoProps.map(p => p._area),
-    ...komaProps.map(p => p._area),
-  ])].sort();
+  const allAreas = getAllRawAreas();
+  const groups = buildAreaFilterGroups(allAreas);
 
   const list = document.getElementById('area-dd-list');
   list.innerHTML = '';
-  allAreas.forEach(a => {
+  groups.forEach(function (group, idx) {
     const item = document.createElement('div');
     item.className = 'area-dd-item';
     const cb = document.createElement('input');
     cb.type = 'checkbox';
-    cb.id = 'area-cb-' + a;
-    cb.value = a;
-    cb.checked = selectedAreas.size === 0 || selectedAreas.has(a);
-    cb.addEventListener('change', () => {
-      if (cb.checked) selectedAreas.add(a);
-      else selectedAreas.delete(a);
-      // 全部チェックなら全エリア扱い
-      if (selectedAreas.size === allAreas.length) selectedAreas.clear();
+    cb.id = 'area-cb-' + idx;
+    cb.dataset.keys = JSON.stringify(group.keys);
+    cb.checked = isAreaGroupSelected(group.keys);
+    cb.addEventListener('change', function () {
+      setAreaGroupSelected(group.keys, cb.checked, allAreas);
       updateAreaLabel();
       renderCards();
     });
     const lbl = document.createElement('label');
-    lbl.htmlFor = 'area-cb-' + a;
-    lbl.textContent = a;
+    lbl.htmlFor = 'area-cb-' + idx;
+    lbl.textContent = group.label;
     item.appendChild(cb); item.appendChild(lbl);
     list.appendChild(item);
   });
@@ -936,18 +1029,17 @@ function buildAreaSelects() {
 }
 
 function updateAreaLabel() {
-  const allAreas = [...new Set([
-    ...repoProps.map(p => p._area),
-    ...komaProps.map(p => p._area),
-  ])].sort();
   const btn = document.getElementById('area-multi-label');
   if (!btn) return;
   if (selectedAreas.size === 0) {
     btn.textContent = '全エリア';
-  } else if (selectedAreas.size === 1) {
-    btn.textContent = [...selectedAreas][0];
+    return;
+  }
+  const labels = [...new Set([...selectedAreas].map(displayAreaName))].sort((a, b) => a.localeCompare(b, 'ja'));
+  if (labels.length === 1) {
+    btn.textContent = labels[0];
   } else {
-    btn.textContent = [...selectedAreas][0] + ' 他' + (selectedAreas.size - 1) + '区';
+    btn.textContent = labels[0] + ' 他' + (labels.length - 1) + '区';
   }
 }
 
@@ -970,11 +1062,8 @@ function areaSelectAll() {
   updateAreaLabel(); renderCards();
 }
 function areaSelectNone() {
-  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => {
-    selectedAreas.add(cb.value); cb.checked = false;
-  });
   selectedAreas.clear();
-  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('#area-dd-list input[type=checkbox]').forEach(cb => { cb.checked = false; });
   updateAreaLabel(); renderCards();
 }
 
@@ -1016,7 +1105,11 @@ function sortProps(arr) {
   const { key, dir } = sortState;
   const d = dir === 'desc' ? -1 : 1;
   return [...arr].sort((a, b) => {
-    if (key === 'area') return (a._area < b._area ? -1 : a._area > b._area ? 1 : 0) * d;
+    if (key === 'area') {
+      const aa = displayAreaName(a._area);
+      const bb = displayAreaName(b._area);
+      return (aa < bb ? -1 : aa > bb ? 1 : 0) * d;
+    }
     if (key === 'other') {
       const av = getOtherCountForProp(a);
       const bv = getOtherCountForProp(b);
@@ -1207,13 +1300,13 @@ function renderList(containerId, props, pane) {
       const price = p.p ? p.p.toLocaleString() + '万' : '—';
       const areaStr = p.s ? p.s + '㎡' : '—';
       const pv  = p.pv !== undefined ? `<span style="color:#cc0000">PV ${p.pv}</span>` : '';
-      const rep = p.r ? '反響 ' + p.r + '件' : '';
+      const rep = p.r ? `<span class="card-rep">反響 ${p.r}件</span>` : '';
       const buildingName = suumoSearchKeyword(p.n);
       const cacheKey = buildingName + '|' + Math.round(Number(p.p));
       const otherInfo = otherCountCache.get(cacheKey);
       const otherBadge = otherInfo
-        ? `<span style="color:#cc0000">他社 ${otherInfo.other_count}件</span>`
-        : `<span style="color:#999">他社未取得</span>`;
+        ? `<span class="card-other">他社 ${otherInfo.other_count}件</span>`
+        : `<span class="card-other card-other-missing">他社未取得</span>`;
 
       const card = document.createElement('div');
       card.className = 'prop-card' + (isMoved ? ' prop-moved' : '');
@@ -1225,15 +1318,14 @@ function renderList(containerId, props, pane) {
         <div class="card-inner">
           <a class="card-name card-name-link" href="${suumoSearchUrl(p.n)}" target="_blank" rel="noopener noreferrer" title="SUUMOで「${esc(suumoKw)}」を検索">${p.n}</a>
           <div class="card-meta">
+            ${rep}
             ${pv ? `<span>${pv}</span>` : ''}
+            ${otherBadge}
             <span>${price}</span>
             <span>${areaStr}</span>
-            ${rep ? `<span>${rep}</span>` : ''}
-            ${otherBadge}
-            <span style="color:#666">${p._area}</span>
+            <span style="color:#666">${displayAreaName(p._area)}</span>
           </div>
         </div>
-        <button class="card-copy-btn" type="button" title="物件名をコピー">📋</button>
         <div class="card-arrow">${arrow}</div>`;
 
       // クリックで移動
@@ -1255,15 +1347,6 @@ function renderList(containerId, props, pane) {
       card.querySelectorAll('*').forEach(child => {
         child.style.pointerEvents = 'none';
       });
-
-      const copyBtn = card.querySelector('.card-copy-btn');
-      copyBtn.style.pointerEvents = 'auto';
-      copyBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        copyPropName(p.n, copyBtn);
-      });
-      copyBtn.addEventListener('mousedown', e => e.stopPropagation());
-      copyBtn.addEventListener('dragstart', e => e.preventDefault());
 
       const nameLink = card.querySelector('.card-name-link');
       nameLink.style.pointerEvents = 'auto';
@@ -1674,29 +1757,6 @@ function copyText() {
   const ta = document.getElementById('text-output-area');
   ta.select(); document.execCommand('copy');
   showToast('コピーしました');
-}
-
-async function copyPropName(name, btn) {
-  try {
-    await navigator.clipboard.writeText(name);
-  } catch {
-    const ta = document.createElement('textarea');
-    ta.value = name;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
-  const label = name.length > 24 ? name.slice(0, 24) + '…' : name;
-  showToast('「' + label + '」をコピーしました', 2000);
-  if (btn) {
-    btn.classList.add('copied');
-    btn.textContent = '✓';
-    setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.textContent = '📋';
-    }, 1200);
-  }
 }
 
 /* ============================================================
