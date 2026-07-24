@@ -51,8 +51,10 @@ function hasPurchaseSupportBadge($, card) {
 
 function parseCardsFromHtml(html, buildingName) {
   const $ = cheerio.load(html);
-  let otherCount = 0;
   let totalListings = 0;
+  let otherCount = 0;
+  let ownRank = null;
+  let badgeRank = 0;
 
   $('.property_unit-content').each((_, el) => {
     const card = $(el);
@@ -62,13 +64,18 @@ function parseCardsFromHtml(html, buildingName) {
     if (!buildingNameMatches(cardName, buildingName)) return;
     if (!hasPurchaseSupportBadge($, card)) return;
 
+    badgeRank += 1;
     const companyName = card.find('.shopmore-title').text().trim();
-    if (!companyName || isOwnCompany(companyName)) return;
+    if (!companyName) return;
 
+    if (isOwnCompany(companyName)) {
+      if (ownRank === null) ownRank = badgeRank;
+      return;
+    }
     otherCount += 1;
   });
 
-  return { otherCount, totalListings };
+  return { otherCount, ownRank, totalListings };
 }
 
 async function fetchSearchHtml(buildingName) {
@@ -103,6 +110,7 @@ exports.handler = async (event) => {
     return jsonResponse(200, {
       buildingName,
       otherCount: result.otherCount,
+      ownRank: result.ownRank,
       totalListings: result.totalListings,
       checkedAt: new Date().toISOString(),
     });

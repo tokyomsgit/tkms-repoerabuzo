@@ -55,6 +55,7 @@ create policy "repoerabuzo_templates_delete_anon"
 create table if not exists public.repoerabuzo_other_counts (
   building_name text primary key,
   other_count int not null default 0,
+  own_rank int,
   checked_at timestamptz not null default now()
 );
 

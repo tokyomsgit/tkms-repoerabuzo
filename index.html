@@ -1528,9 +1528,7 @@ function renderList(containerId, props, pane) {
       const parts = splitPropertyName(p.n);
       const buildingName = suumoSearchKeyword(p.n);
       const otherInfo = otherCountCache.get(buildingName);
-      const otherBadge = otherInfo
-        ? `<span class="card-other">他社 ${otherInfo.other_count}件</span>`
-        : `<span class="card-other card-other-missing">他社未取得</span>`;
+      const otherBadge = formatOtherBadge(otherInfo);
 
       const card = document.createElement('div');
       card.className = 'prop-card' + (isMoved ? ' prop-moved' : '');
@@ -1656,14 +1654,26 @@ function getOtherCountForProp(p) {
   return info ? info.other_count : null;
 }
 
+function formatOtherBadge(info) {
+  if (!info) {
+    return '<span class="card-other card-other-missing">未取得</span>';
+  }
+  const count = info.other_count;
+  if (info.own_rank == null) {
+    return '<span class="card-other">—/' + count + '件</span>';
+  }
+  return '<span class="card-other">' + info.own_rank + '番/' + count + '件</span>';
+}
+
 async function loadOtherCounts() {
   try {
-    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, other_count, checked_at');
+    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, other_count, own_rank, checked_at');
     if (error) throw error;
     otherCountCache = new Map();
     (data || []).forEach(function (row) {
       otherCountCache.set(row.building_name, {
         other_count: row.other_count,
+        own_rank: row.own_rank,
         checked_at: row.checked_at,
       });
     });
@@ -1721,6 +1731,7 @@ async function upsertOtherCountResult(data) {
   const row = {
     building_name: data.buildingName,
     other_count: data.otherCount,
+    own_rank: data.ownRank,
     checked_at: data.checkedAt,
   };
   const { error } = await sb.from(SB_OTHER_COUNTS).upsert(row, { onConflict: 'building_name' });
@@ -1734,6 +1745,7 @@ async function upsertOtherCountResult(data) {
   }
   otherCountCache.set(data.buildingName, {
     other_count: data.otherCount,
+    own_rank: data.ownRank,
     checked_at: data.checkedAt,
   });
 }
