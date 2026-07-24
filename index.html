@@ -76,6 +76,11 @@ body{
 }
 .hdr-btn:hover{background:#ddd}
 .hdr-btn:disabled{background:#f0f0f0;color:#999;cursor:not-allowed;border-color:#ddd}
+.btn-label-short{display:none}
+
+/* スマホ：レポ／コマ切替タブ */
+.mobile-pane-tabs{display:none}
+
 .other-count-progress{
   position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
   background:#111;color:#fff;padding:10px 18px;border-radius:8px;
@@ -402,64 +407,105 @@ body{
 }
 
 /* ============================================================
-   レスポンシブ（スマホ 680px以下）
+   レスポンシブ（タブレット・スマホ 768px以下）
 ============================================================ */
-@media (max-width:680px){
-  .container{padding:0 12px}
-  body{background:#fff}
-  .site-main{background:#fff;padding-bottom:0}
-  .site-main > .container.main-layout{border:none;padding:0;max-width:none}
-  .site-toolbar .container{border-bottom:3px solid #111}
-  .header{padding:8px 12px;flex-wrap:wrap;gap:8px}
-  .header-left{flex-direction:column;align-items:flex-start;gap:4px}
-  .logo{font-size:17px}
-  #import-time-label{font-size:12px}
-  .hdr-btn{padding:6px 10px;font-size:12px}
+@media (max-width:768px){
+  .container{padding:0 10px}
+  body{background:#fff;min-height:100dvh}
+  .site-main{background:#fff;padding-bottom:0;min-height:0;flex:1}
+  .site-main > .container.main-layout{
+    border:none;padding:0;max-width:none;flex:1;min-height:0;display:flex;flex-direction:column;
+  }
+  .site-toolbar .container{border-bottom:none}
+  .shared-toolbar{padding:8px 0;gap:8px}
 
-  /* ツールバー横スクロール */
-  .shared-toolbar{padding:6px 8px;gap:4px}
-  .toolbar-row{flex-wrap:nowrap;overflow-x:auto;gap:4px}
+  /* ヘッダー */
+  .header{
+    flex-direction:column;align-items:stretch;gap:8px;
+    padding:8px 0;
+  }
+  .header-left{flex-direction:row;align-items:center;gap:10px}
+  .logo{font-size:17px}
+  #import-time-label{font-size:11px}
+  .hdr-btns{
+    display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%;
+  }
+  .hdr-btn{
+    padding:10px 6px;font-size:11px;min-height:44px;
+  }
+  .btn-label-long{display:none}
+  .btn-label-short{display:inline}
+
+  /* ツールバー */
+  .toolbar-row{flex-wrap:nowrap;overflow-x:auto;gap:6px;-webkit-overflow-scrolling:touch}
   .toolbar-row::-webkit-scrollbar{height:0}
   .tb-label{font-size:12px;flex-shrink:0}
-  .area-multi-btn{font-size:13px;min-width:90px;padding:4px 8px}
-  .tmpl-select{font-size:12px;padding:3px 6px;max-width:100px}
-  .tmpl-input{font-size:12px;width:80px;padding:3px 6px}
-  .tmpl-btn{font-size:12px;padding:4px 8px;flex-shrink:0}
-  .sort-btn{font-size:12px;padding:4px 8px;flex-shrink:0}
-  .draft-badge{font-size:12px;padding:3px 8px 3px 10px;flex-shrink:0}
+  .area-multi-btn{font-size:13px;min-width:100px;padding:8px 10px;min-height:40px}
+  .sort-btn{font-size:12px;padding:8px 10px;flex-shrink:0;min-height:40px}
 
-  /* 左右→上下2段レイアウト */
-  .main-layout{
-    grid-template-columns:1fr;
-    grid-template-rows:1fr 4px 1fr;
-    height:auto;flex:1;
+  /* レポ／コマタブ */
+  .mobile-pane-tabs{
+    display:flex;width:100%;
+    background:#fff;border-bottom:3px solid #111;
+    position:sticky;top:0;z-index:200;
   }
-  .divider{height:4px;width:100%}
+  .mobile-pane-tab{
+    flex:1;padding:12px 8px;
+    border:none;border-right:2px solid #111;
+    background:#f5f5f5;
+    font-family:inherit;font-weight:900;font-size:16px;
+    cursor:pointer;min-height:48px;
+  }
+  .mobile-pane-tab:last-child{border-right:none}
+  .mobile-pane-tab.active{background:#111;color:#fff}
 
-  /* 各ペイン固定高 */
-  .pane{height:44vh;min-height:0}
+  /* 1画面1ペイン */
+  .main-layout{
+    display:flex;flex-direction:column;
+    flex:1;min-height:0;
+  }
+  .divider{display:none}
+  .pane{display:none;flex:1;min-height:0;height:auto}
+  .pane.mobile-active{display:flex}
 
   /* ペインヘッダー */
-  .pane-header{padding:8px 10px}
+  .pane-header{
+    padding:8px 10px;flex-wrap:wrap;gap:6px;
+  }
   .pane-title{font-size:15px}
-  .text-output-btn{font-size:12px;padding:5px 10px}
-  .removal-output-btn{font-size:12px;padding:5px 10px}
-
-  /* バッジ数字 */
+  .pane-header-btns{width:100%}
+  .text-output-btn,.removal-output-btn{
+    width:100%;font-size:13px;padding:10px;min-height:44px;
+  }
   .quota-badge .quota-current{font-size:22px}
   .quota-badge .quota-limit{font-size:13px}
   .quota-badge .quota-diff{font-size:13px}
 
-  .card-list{padding:10px 8px}
-  .prop-card{padding:8px 10px;gap:4px}
-  .card-name{font-size:15px;margin-bottom:3px}
-  .card-rep{font-size:14px}
-  .card-other{font-size:14px}
-  .card-meta{font-size:13px;gap:8px}
-  .card-arrow{width:34px;height:34px;font-size:18px;border-radius:8px}
+  /* カード */
+  .card-list{padding:8px 6px;flex:1}
+  .prop-card{padding:10px;gap:8px}
+  .card-name{font-size:15px;margin-bottom:4px}
+  .card-rep,.card-other{font-size:13px}
+  .card-meta{font-size:12px;gap:6px 10px}
+  .card-arrow{
+    width:44px;height:44px;font-size:20px;border-radius:10px;
+  }
+
+  /* エリアドロップダウン */
+  .area-dropdown{
+    left:0;right:0;width:auto;max-height:50vh;overflow-y:auto;
+  }
 
   /* モーダル */
   .text-modal{width:96vw;max-height:85vh}
+  #toast{
+    bottom:max(16px, env(safe-area-inset-bottom));
+    left:10px;right:10px;transform:none;text-align:center;
+  }
+  .other-count-progress{
+    bottom:max(16px, env(safe-area-inset-bottom));
+    left:10px;right:10px;transform:none;
+  }
 }
 </style>
 </head>
@@ -474,8 +520,8 @@ body{
       </div>
     </div>
     <div class="hdr-btns">
-      <button class="hdr-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()">他社件数を更新</button>
-      <button class="hdr-btn gas-sync-btn" onclick="triggerGasSync()">Drive同期</button>
+      <button class="hdr-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()"><span class="btn-label-long">他社件数を更新</span><span class="btn-label-short">他社更新</span></button>
+      <button class="hdr-btn gas-sync-btn" onclick="triggerGasSync()"><span class="btn-label-long">Drive同期</span><span class="btn-label-short">Drive</span></button>
       <button class="hdr-btn" onclick="openSettingsModal()" title="設定">⚙ 設定</button>
     </div>
   </div>
@@ -517,6 +563,11 @@ body{
   </div>
     </div>
   </div>
+</div>
+
+<div class="mobile-pane-tabs" id="mobile-pane-tabs">
+  <button type="button" class="mobile-pane-tab active" data-pane="repo" onclick="switchMobilePane('repo')">レポ</button>
+  <button type="button" class="mobile-pane-tab" data-pane="koma" onclick="switchMobilePane('koma')">コマ</button>
 </div>
 
 <main class="site-main">
@@ -830,6 +881,42 @@ async function initApp() {
   // 初期ソートボタン状態
   updateSortUI();
   startAutoSyncPoll();
+  initMobilePane();
+}
+
+/* ============================================================
+   スマホ：レポ／コマタブ切替
+============================================================ */
+let mobileActivePane = 'repo';
+
+function isMobileLayout() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function applyMobilePaneLayout() {
+  var left = document.querySelector('.pane-left');
+  var right = document.querySelector('.pane-right');
+  if (!left || !right) return;
+  if (isMobileLayout()) {
+    left.classList.toggle('mobile-active', mobileActivePane === 'repo');
+    right.classList.toggle('mobile-active', mobileActivePane === 'koma');
+  } else {
+    left.classList.add('mobile-active');
+    right.classList.add('mobile-active');
+  }
+}
+
+function switchMobilePane(pane) {
+  mobileActivePane = pane;
+  document.querySelectorAll('.mobile-pane-tab').forEach(function (btn) {
+    btn.classList.toggle('active', btn.dataset.pane === pane);
+  });
+  applyMobilePaneLayout();
+}
+
+function initMobilePane() {
+  applyMobilePaneLayout();
+  window.addEventListener('resize', applyMobilePaneLayout);
 }
 
 /* ============================================================
