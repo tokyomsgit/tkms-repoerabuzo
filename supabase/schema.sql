@@ -55,9 +55,10 @@ create policy "repoerabuzo_templates_delete_anon"
 create table if not exists public.repoerabuzo_other_counts (
   building_name text not null,
   price int not null,
+  area numeric(8, 2) not null,
   other_count int not null default 0,
   checked_at timestamptz not null default now(),
-  primary key (building_name, price)
+  primary key (building_name, price, area)
 );
 
 alter table public.repoerabuzo_other_counts enable row level security;

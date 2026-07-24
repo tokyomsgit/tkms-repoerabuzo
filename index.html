@@ -1516,7 +1516,7 @@ function renderList(containerId, props, pane) {
       const rep = p.r ? `<span class="card-rep">反響 ${p.r}件</span>` : '';
       const parts = splitPropertyName(p.n);
       const buildingName = suumoSearchKeyword(p.n);
-      const cacheKey = buildingName + '|' + Math.round(Number(p.p));
+      const cacheKey = otherCountCacheKey(buildingName, p.p, p.s);
       const otherInfo = otherCountCache.get(cacheKey);
       const otherBadge = otherInfo
         ? `<span class="card-other">他社 ${otherInfo.other_count}件</span>`
@@ -1642,23 +1642,24 @@ function suumoSearchUrl(name) {
 /* ============================================================
    他社件数（Netlify Function + Supabase キャッシュ）
 ============================================================ */
-function otherCountCacheKey(buildingName, price) {
-  return buildingName + '|' + Math.round(Number(price));
+function otherCountCacheKey(buildingName, price, area) {
+  const a = Math.round(Number(area) * 10) / 10;
+  return buildingName + '|' + Math.round(Number(price)) + '|' + a;
 }
 
 function getOtherCountForProp(p) {
-  if (!p || !p.n || !p.p) return null;
-  const info = otherCountCache.get(otherCountCacheKey(suumoSearchKeyword(p.n), p.p));
+  if (!p || !p.n || !p.p || !p.s) return null;
+  const info = otherCountCache.get(otherCountCacheKey(suumoSearchKeyword(p.n), p.p, p.s));
   return info ? info.other_count : null;
 }
 
 async function loadOtherCounts() {
   try {
-    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, price, other_count, checked_at');
+    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, price, area, other_count, checked_at');
     if (error) throw error;
     otherCountCache = new Map();
     (data || []).forEach(function (row) {
-      otherCountCache.set(otherCountCacheKey(row.building_name, row.price), {
+      otherCountCache.set(otherCountCacheKey(row.building_name, row.price, row.area), {
         other_count: row.other_count,
         checked_at: row.checked_at,
       });
@@ -1672,14 +1673,15 @@ function collectUniqueBuildingPricePairs() {
   const seen = new Set();
   const pairs = [];
   repoProps.concat(komaProps).forEach(function (p) {
-    if (!p.n || !p.p) return;
+    if (!p.n || !p.p || !p.s) return;
     const buildingName = suumoSearchKeyword(p.n);
     const price = Math.round(Number(p.p));
-    if (!buildingName || !price) return;
-    const key = otherCountCacheKey(buildingName, price);
+    const area = Math.round(Number(p.s) * 10) / 10;
+    if (!buildingName || !price || !area) return;
+    const key = otherCountCacheKey(buildingName, price, area);
     if (seen.has(key)) return;
     seen.add(key);
-    pairs.push({ buildingName: buildingName, price: price, key: key });
+    pairs.push({ buildingName: buildingName, price: price, area: area, key: key });
   });
   return pairs;
 }
@@ -1705,11 +1707,11 @@ function setOtherCountBusy(busy) {
   if (btn) btn.disabled = busy;
 }
 
-async function fetchOtherCompanyCount(buildingName, price) {
+async function fetchOtherCompanyCount(buildingName, price, area) {
   const res = await fetch(OTHER_COUNT_FN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ buildingName: buildingName, price: price }),
+    body: JSON.stringify({ buildingName: buildingName, price: price, area: area }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || '他社件数取得に失敗しました');
@@ -1720,12 +1722,13 @@ async function upsertOtherCountResult(data) {
   const row = {
     building_name: data.buildingName,
     price: data.price,
+    area: data.area,
     other_count: data.otherCount,
     checked_at: data.checkedAt,
   };
-  const { error } = await sb.from(SB_OTHER_COUNTS).upsert(row, { onConflict: 'building_name,price' });
+  const { error } = await sb.from(SB_OTHER_COUNTS).upsert(row, { onConflict: 'building_name,price,area' });
   if (error) throw error;
-  otherCountCache.set(otherCountCacheKey(data.buildingName, data.price), {
+  otherCountCache.set(otherCountCacheKey(data.buildingName, data.price, data.area), {
     other_count: data.otherCount,
     checked_at: data.checkedAt,
   });
@@ -1760,7 +1763,7 @@ async function triggerOtherCountUpdate() {
       const i = index++;
       const item = todo[i];
       try {
-        const data = await fetchOtherCompanyCount(item.buildingName, item.price);
+        const data = await fetchOtherCompanyCount(item.buildingName, item.price, item.area);
         await upsertOtherCountResult(data);
         success += 1;
       } catch (e) {
