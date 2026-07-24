@@ -3,3 +3,6 @@
 
 alter table public.repoerabuzo_other_counts
   add column if not exists own_rank int;
+
+alter table public.repoerabuzo_other_counts
+  add column if not exists badge_total int not null default 0;

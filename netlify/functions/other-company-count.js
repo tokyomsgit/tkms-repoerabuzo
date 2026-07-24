@@ -38,10 +38,6 @@ function buildingNameMatches(cardName, searchName) {
   return a.includes(b) || b.includes(a);
 }
 
-function isOwnCompany(companyName) {
-  return (companyName || '').includes('東京マンション');
-}
-
 function hasPurchaseSupportBadge($, card) {
   return card
     .find('.property_unit-pcts .ui-pct.ui-pct--util1')
@@ -49,12 +45,15 @@ function hasPurchaseSupportBadge($, card) {
     .some((badge) => $(badge).text().trim() === '購入サポート情報');
 }
 
+function isOwnCompany(companyName) {
+  return companyName.includes('東京マンション');
+}
+
 function parseCardsFromHtml(html, buildingName) {
   const $ = cheerio.load(html);
   let totalListings = 0;
-  let otherCount = 0;
-  let ownRank = null;
-  let badgeRank = 0;
+  let supportCount = 0;
+  let noSupportCount = 0;
 
   $('.property_unit-content').each((_, el) => {
     const card = $(el);
@@ -62,20 +61,18 @@ function parseCardsFromHtml(html, buildingName) {
 
     const cardName = getCardField($, card, '物件名');
     if (!buildingNameMatches(cardName, buildingName)) return;
-    if (!hasPurchaseSupportBadge($, card)) return;
 
-    badgeRank += 1;
     const companyName = card.find('.shopmore-title').text().trim();
-    if (!companyName) return;
+    if (!companyName || isOwnCompany(companyName)) return;
 
-    if (isOwnCompany(companyName)) {
-      if (ownRank === null) ownRank = badgeRank;
-      return;
+    if (hasPurchaseSupportBadge($, card)) {
+      supportCount += 1;
+    } else {
+      noSupportCount += 1;
     }
-    otherCount += 1;
   });
 
-  return { otherCount, ownRank, totalListings };
+  return { supportCount, noSupportCount, totalListings };
 }
 
 async function fetchSearchHtml(buildingName) {
@@ -109,8 +106,8 @@ exports.handler = async (event) => {
 
     return jsonResponse(200, {
       buildingName,
-      otherCount: result.otherCount,
-      ownRank: result.ownRank,
+      supportCount: result.supportCount,
+      noSupportCount: result.noSupportCount,
       totalListings: result.totalListings,
       checkedAt: new Date().toISOString(),
     });

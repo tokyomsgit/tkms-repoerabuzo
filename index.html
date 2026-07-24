@@ -299,6 +299,7 @@ body{
   color:#cc0000;
   white-space:nowrap;
 }
+.card-other-nosupport{color:#111;font-weight:900}
 .card-other-missing{color:#777}
 .card-pv{color:#111;font-weight:900}
 .card-muted{color:#777;font-weight:400}
@@ -658,7 +659,7 @@ body{
         </span>
       </div>
       <div class="pane-header-btns">
-        <button class="text-output-btn" onclick="openTextModal('repo')">テキスト出力</button>
+        <button class="text-output-btn" onclick="openTextModal('repo')">レポ出力</button>
       </div>
     </div>
     <div class="card-list" id="repo-list"></div>
@@ -732,7 +733,7 @@ body{
 <div class="text-modal-overlay" id="text-modal-overlay" onclick="if(event.target===this)closeTextModal()">
   <div class="text-modal">
     <div class="text-modal-header">
-      <span class="text-modal-title" id="text-modal-title">テキスト出力</span>
+      <span class="text-modal-title" id="text-modal-title">レポ出力</span>
       <button class="text-modal-close" onclick="closeTextModal()">×</button>
     </div>
     <div class="text-modal-body">
@@ -1651,29 +1652,26 @@ function suumoSearchUrl(name) {
 function getOtherCountForProp(p) {
   if (!p || !p.n) return null;
   const info = otherCountCache.get(suumoSearchKeyword(p.n));
-  return info ? info.other_count : null;
+  return info ? info.support_count : null;
 }
 
 function formatOtherBadge(info) {
   if (!info) {
     return '<span class="card-other card-other-missing">未取得</span>';
   }
-  const count = info.other_count;
-  if (info.own_rank == null) {
-    return '<span class="card-other">—/' + count + '件</span>';
-  }
-  return '<span class="card-other">' + info.own_rank + '番/' + count + '件</span>';
+  return '<span class="card-other">' + info.support_count
+    + '/<span class="card-other-nosupport">' + info.no_support_count + '</span></span>';
 }
 
 async function loadOtherCounts() {
   try {
-    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, other_count, own_rank, checked_at');
+    const { data, error } = await sb.from(SB_OTHER_COUNTS).select('building_name, support_count, no_support_count, checked_at');
     if (error) throw error;
     otherCountCache = new Map();
     (data || []).forEach(function (row) {
       otherCountCache.set(row.building_name, {
-        other_count: row.other_count,
-        own_rank: row.own_rank,
+        support_count: row.support_count,
+        no_support_count: row.no_support_count,
         checked_at: row.checked_at,
       });
     });
@@ -1730,22 +1728,33 @@ async function fetchOtherCompanyCount(buildingName) {
 async function upsertOtherCountResult(data) {
   const row = {
     building_name: data.buildingName,
-    other_count: data.otherCount,
-    own_rank: data.ownRank,
+    support_count: data.supportCount,
+    no_support_count: data.noSupportCount,
     checked_at: data.checkedAt,
   };
   const { error } = await sb.from(SB_OTHER_COUNTS).upsert(row, { onConflict: 'building_name' });
   if (error) {
-    if (/ON CONFLICT|unique or exclusion constraint/i.test(error.message || '')) {
+    const msg = error.message || '';
+    if (/ON CONFLICT|unique or exclusion constraint/i.test(msg)) {
       throw new Error(
-        'DBの形式が古いです。Supabaseで migration_other_counts_building_only.sql を実行してください'
+        'DBの形式が古いです。Supabaseで migration_other_counts_support_split.sql を実行してください'
+      );
+    }
+    if (/other_count.*schema cache|Could not find the .other_count/i.test(msg)) {
+      throw new Error(
+        'ページが古いバージョンです。Netlify再デプロイ後、ブラウザをスーパーリロード（Ctrl+Shift+R）してください'
+      );
+    }
+    if (/support_count.*schema cache|no_support_count.*schema cache/i.test(msg)) {
+      throw new Error(
+        'DBの形式が古いです。Supabaseで migration_other_counts_support_split.sql を実行してください'
       );
     }
     throw error;
   }
   otherCountCache.set(data.buildingName, {
-    other_count: data.otherCount,
-    own_rank: data.ownRank,
+    support_count: data.supportCount,
+    no_support_count: data.noSupportCount,
     checked_at: data.checkedAt,
   });
 }
@@ -1876,7 +1885,7 @@ function openTextModal(pane) {
       ...repoProps.filter(p => !movedToKoma.has(p.n)),
       ...komaProps.filter(p => movedToRepo.has(p.n)),
     ].filter(p => areas.size === 0 || areas.has(p._area)));
-    title = 'レポ テキスト出力';
+    title = 'レポ出力';
   } else {
     props = sortProps([
       ...komaProps.filter(p => !movedToRepo.has(p.n)),

@@ -54,8 +54,8 @@ create policy "repoerabuzo_templates_delete_anon"
 -- 他社件数キャッシュ（SUUMO マンション名検索結果）
 create table if not exists public.repoerabuzo_other_counts (
   building_name text primary key,
-  other_count int not null default 0,
-  own_rank int,
+  support_count int not null default 0,
+  no_support_count int not null default 0,
   checked_at timestamptz not null default now()
 );
 
