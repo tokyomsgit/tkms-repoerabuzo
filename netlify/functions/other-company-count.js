@@ -31,29 +31,6 @@ function getCardField($, card, label) {
   return value.trim();
 }
 
-function parseCardArea($, card) {
-  const mix = getCardField($, card, '専有面積');
-  const m = String(mix).match(/([\d.]+)\s*m2/i);
-  return m ? parseFloat(m[1]) : 0;
-}
-
-function normalizeArea(area) {
-  const n = Number(area);
-  if (!n || n <= 0) return 0;
-  return Math.round(n * 10) / 10;
-}
-
-function areasMatch(cardArea, targetArea) {
-  const a = normalizeArea(cardArea);
-  const b = normalizeArea(targetArea);
-  if (!a || !b) return false;
-  return Math.abs(a - b) <= 0.15;
-}
-
-function parsePriceManYen(text) {
-  return parseInt(String(text || '').replace(/[^\d]/g, ''), 10) || 0;
-}
-
 function buildingNameMatches(cardName, searchName) {
   if (!searchName || !cardName) return false;
   const a = cardName.trim();
@@ -65,7 +42,14 @@ function isOwnCompany(companyName) {
   return (companyName || '').includes('東京マンション');
 }
 
-function parseCardsFromHtml(html, buildingName, priceNum, targetArea) {
+function hasPurchaseSupportBadge($, card) {
+  return card
+    .find('.property_unit-pcts .ui-pct.ui-pct--util1')
+    .toArray()
+    .some((badge) => $(badge).text().trim() === '購入サポート情報');
+}
+
+function parseCardsFromHtml(html, buildingName) {
   const $ = cheerio.load(html);
   let otherCount = 0;
   let totalListings = 0;
@@ -76,15 +60,10 @@ function parseCardsFromHtml(html, buildingName, priceNum, targetArea) {
 
     const cardName = getCardField($, card, '物件名');
     if (!buildingNameMatches(cardName, buildingName)) return;
+    if (!hasPurchaseSupportBadge($, card)) return;
 
     const companyName = card.find('.shopmore-title').text().trim();
     if (!companyName || isOwnCompany(companyName)) return;
-
-    const cardPrice = parsePriceManYen(getCardField($, card, '販売価格')
-      || card.find('.dottable-value').first().text().trim());
-    if (cardPrice !== priceNum) return;
-
-    if (!areasMatch(parseCardArea($, card), targetArea)) return;
 
     otherCount += 1;
   });
@@ -113,20 +92,16 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { buildingName, price, area } = JSON.parse(event.body || '{}');
-    const priceNum = parseInt(price, 10);
-    const areaNum = normalizeArea(area);
-    if (!buildingName || !priceNum || !areaNum) {
-      return jsonResponse(400, { error: 'buildingName, price and area are required' });
+    const { buildingName } = JSON.parse(event.body || '{}');
+    if (!buildingName) {
+      return jsonResponse(400, { error: 'buildingName is required' });
     }
 
     const html = await fetchSearchHtml(buildingName);
-    const result = parseCardsFromHtml(html, buildingName, priceNum, areaNum);
+    const result = parseCardsFromHtml(html, buildingName);
 
     return jsonResponse(200, {
       buildingName,
-      price: priceNum,
-      area: areaNum,
       otherCount: result.otherCount,
       totalListings: result.totalListings,
       checkedAt: new Date().toISOString(),

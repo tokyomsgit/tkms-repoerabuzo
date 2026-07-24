@@ -51,14 +51,11 @@ drop policy if exists "repoerabuzo_templates_delete_anon" on public.repoerabuzo_
 create policy "repoerabuzo_templates_delete_anon"
   on public.repoerabuzo_templates for delete to anon using (true);
 
--- 他社件数キャッシュ（SUUMO 検索結果）
+-- 他社件数キャッシュ（SUUMO マンション名検索結果）
 create table if not exists public.repoerabuzo_other_counts (
-  building_name text not null,
-  price int not null,
-  area numeric(8, 2) not null,
+  building_name text primary key,
   other_count int not null default 0,
-  checked_at timestamptz not null default now(),
-  primary key (building_name, price, area)
+  checked_at timestamptz not null default now()
 );
 
 alter table public.repoerabuzo_other_counts enable row level security;
