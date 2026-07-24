@@ -173,6 +173,22 @@ body{
   font-family:inherit;font-weight:700;font-size:13px;
 }
 .removal-output-btn:hover{background:#fff0f0}
+.pane-move-btn{
+  padding:4px 12px;
+  background:#fff;color:#111;
+  border:2px solid #111;cursor:pointer;
+  font-family:inherit;font-weight:700;font-size:13px;
+  white-space:nowrap;
+}
+.pane-move-btn:hover:not(:disabled){background:#eee}
+.pane-move-btn:disabled{
+  opacity:.45;cursor:not-allowed;
+  border-color:#999;color:#777;
+}
+.pane-move-btn .move-count{
+  display:inline-block;min-width:1.2em;
+  color:#0055cc;font-weight:900;
+}
 
 /* 共通ツールバー */
 .shared-toolbar{
@@ -261,21 +277,25 @@ body{
   display:flex;align-items:center;
   padding:4px 6px;
   border-radius:6px;
-  cursor:pointer;
+  cursor:default;
   user-select:none;
   background:#fff;
   border:1px solid #111;
   transition:transform .1s, box-shadow .1s;
   gap:6px;
 }
-.prop-card:hover .card-arrow{
-  background:#111;color:#fff;border-color:#111;
+.prop-card:hover .card-select-wrap{
+  border-color:#111;
 }
 .prop-card:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.15)}
 .prop-card:active{transform:translateY(0)}
 .prop-card.prop-moved{
   border:3px solid #cc0000;
   background:#fff0f0;
+}
+.prop-card.prop-selected{
+  background:#f5f8ff;
+  border-color:#0055cc;
 }
 
 .card-inner{flex:1;min-width:0}
@@ -321,42 +341,30 @@ body{
   margin-top:2px;
 }
 .card-meta span{white-space:nowrap}
-.card-arrow{
+.card-select-wrap{
   flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  width:36px;height:36px;
-  font-size:20px;font-weight:900;
-  color:#111;background:#f0f0f0;
-  border:2px solid #111;border-radius:10px;
-  line-height:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:40px;min-height:40px;
+  border:2px solid #ccc;border-radius:8px;
+  background:#fafafa;
   cursor:pointer;
-  font-family:inherit;
-  padding:0;
-  appearance:none;
-  -webkit-appearance:none;
-  transition:background .15s,color .15s,border-color .15s;
+  transition:border-color .15s,background .15s;
+  padding:2px;
+  gap:1px;
 }
-.card-arrow:hover{
-  background:#111;color:#fff;border-color:#111;
+.card-select-wrap:hover{border-color:#111;background:#f0f0f0}
+.card-select-cb{
+  width:18px;height:18px;cursor:pointer;
+  accent-color:#111;margin:0;
+}
+.card-select-num{
+  font-size:11px;font-weight:900;color:#0055cc;
+  line-height:1;min-height:12px;
 }
 
 .empty-state{
   display:flex;align-items:center;justify-content:center;
   flex:1;font-size:14px;color:#aaa;font-weight:700;
-}
-
-/* ドラッグ＆ドロップ */
-.prop-card[draggable="true"]{cursor:grab}
-.prop-card[draggable="true"]:active{cursor:grabbing}
-.prop-card.dragging{opacity:.35;transform:scale(.97)}
-.card-list.drag-over{
-  background:rgba(0,0,0,.06);
-  outline:3px dashed #111;
-  outline-offset:-4px;
-}
-.drop-placeholder{
-  height:52px;border-radius:8px;border:3px dashed #999;
-  background:rgba(0,0,0,.04);flex-shrink:0;
 }
 
 /* テキスト出力モーダル */
@@ -547,7 +555,7 @@ body{
   }
   .pane-title{font-size:calc(15px * var(--mobile-font-scale))}
   .pane-header-btns{width:100%}
-  .text-output-btn,.removal-output-btn{
+  .text-output-btn,.removal-output-btn,.pane-move-btn{
     width:100%;font-size:calc(13px * var(--mobile-font-scale));padding:10px;min-height:44px;
   }
   .quota-badge .quota-current{font-size:calc(22px * var(--mobile-font-scale))}
@@ -562,9 +570,11 @@ body{
   .card-stats{gap:4px 6px}
   .card-rep,.card-other,.card-pv{font-size:calc(13px * var(--mobile-font-scale))}
   .card-meta{font-size:calc(12px * var(--mobile-font-scale));gap:4px 8px;line-height:1.25}
-  .card-arrow{
-    width:calc(40px * var(--mobile-font-scale));height:calc(40px * var(--mobile-font-scale));
-    font-size:calc(18px * var(--mobile-font-scale));border-radius:8px;
+  .card-select-wrap{
+    width:calc(42px * var(--mobile-font-scale));min-height:calc(42px * var(--mobile-font-scale));
+  }
+  .card-select-cb{
+    width:calc(18px * var(--mobile-font-scale));height:calc(18px * var(--mobile-font-scale));
   }
 
   /* エリアドロップダウン */
@@ -664,6 +674,7 @@ body{
         </span>
       </div>
       <div class="pane-header-btns">
+        <button type="button" class="pane-move-btn" id="repo-move-btn" disabled onclick="executeMoveSelected('repo')">→ 移動 <span class="move-count" id="repo-move-count"></span></button>
         <button class="text-output-btn" onclick="openTextModal('repo')">レポ出力</button>
       </div>
     </div>
@@ -684,6 +695,7 @@ body{
         </span>
       </div>
       <div class="pane-header-btns">
+        <button type="button" class="pane-move-btn" id="koma-move-btn" disabled onclick="executeMoveSelected('koma')">← 移動 <span class="move-count" id="koma-move-count"></span></button>
         <button class="removal-output-btn" onclick="openRemovalModal()">外し出力</button>
       </div>
     </div>
@@ -866,6 +878,10 @@ let repoProps = [];
 let komaProps = [];
 let movedToKoma = new Set();
 let movedToRepo = new Set();
+
+/* 物件選択（チェックボックス） */
+let selectedRepo = [];
+let selectedKoma = [];
 
 /* 共同編集（物件移動） */
 let collabClientId = '';
@@ -1472,6 +1488,65 @@ function renderCards() {
 
   renderList('repo-list', repoDisplayed, 'repo');
   renderList('koma-list', komaDisplayed, 'koma');
+  updateMoveButtons();
+}
+
+function getSelectionList(pane) {
+  return pane === 'repo' ? selectedRepo : selectedKoma;
+}
+
+function pruneSelection(pane, props) {
+  const names = new Set(props.map(function (p) { return p.n; }));
+  const sel = getSelectionList(pane).filter(function (n) { return names.has(n); });
+  if (pane === 'repo') selectedRepo = sel;
+  else selectedKoma = sel;
+}
+
+function updateMoveButtons() {
+  ['repo', 'koma'].forEach(function (pane) {
+    const sel = getSelectionList(pane);
+    const btn = document.getElementById(pane + '-move-btn');
+    const countEl = document.getElementById(pane + '-move-count');
+    if (!btn || !countEl) return;
+    const n = sel.length;
+    btn.disabled = n === 0;
+    countEl.textContent = n ? '(' + n + ')' : '';
+    btn.title = n ? n + '件選択中 — クリックで' + (pane === 'repo' ? 'コマへ' : 'レポへ') + '移動' : '物件を選択してください';
+  });
+}
+
+function toggleCardSelection(n, pane, checked) {
+  const sel = getSelectionList(pane);
+  if (checked) {
+    if (!sel.includes(n)) sel.push(n);
+  } else {
+    const idx = sel.indexOf(n);
+    if (idx >= 0) sel.splice(idx, 1);
+  }
+  if (pane === 'repo') selectedRepo = sel;
+  else selectedKoma = sel;
+  refreshSelectionBadges(pane);
+  updateMoveButtons();
+}
+
+function refreshSelectionBadges(pane) {
+  const listId = pane === 'repo' ? 'repo-list' : 'koma-list';
+  const sel = getSelectionList(pane);
+  document.querySelectorAll('#' + listId + ' .prop-card').forEach(function (card) {
+    const name = card.dataset.name;
+    const idx = sel.indexOf(name);
+    const numEl = card.querySelector('.card-select-num');
+    const cb = card.querySelector('.card-select-cb');
+    if (idx >= 0) {
+      card.classList.add('prop-selected');
+      if (numEl) numEl.textContent = String(idx + 1);
+      if (cb) cb.checked = true;
+    } else {
+      card.classList.remove('prop-selected');
+      if (numEl) numEl.textContent = '';
+      if (cb) cb.checked = false;
+    }
+  });
 }
 
 /* 掲載枠バッジ更新 */
@@ -1531,31 +1606,35 @@ function updateQuotaBadge(pane, current, areas) {
 function renderList(containerId, props, pane) {
   const el = document.getElementById(containerId);
   el.innerHTML = '';
+  pruneSelection(pane, props);
 
   if (props.length === 0) {
     el.innerHTML = '<div class="empty-state">物件がありません</div>';
   } else {
-    props.forEach(p => {
+    const sel = getSelectionList(pane);
+    props.forEach(function (p) {
       const isMoved = (pane === 'repo' && movedToRepo.has(p.n)) ||
                       (pane === 'koma' && movedToKoma.has(p.n));
-      const arrow = pane === 'repo' ? '→' : '←';
+      const selIdx = sel.indexOf(p.n);
+      const isSelected = selIdx >= 0;
       const price = p.p ? p.p.toLocaleString() + '万' : '—';
       const areaStr = p.s ? p.s + '㎡' : '—';
-      const pv  = p.pv !== undefined ? `<span class="card-pv">PV ${p.pv}</span>` : '';
-      const rep = p.r ? `<span class="card-rep">反響 ${p.r}件</span>` : '';
+      const pv  = p.pv !== undefined ? '<span class="card-pv">PV ' + p.pv + '</span>' : '';
+      const rep = p.r ? '<span class="card-rep">反響 ' + p.r + '件</span>' : '';
       const parts = splitPropertyName(p.n);
       const buildingName = suumoSearchKeyword(p.n);
       const otherInfo = otherCountCache.get(buildingName);
       const otherBadge = formatOtherBadge(otherInfo);
 
       const card = document.createElement('div');
-      card.className = 'prop-card' + (isMoved ? ' prop-moved' : '');
-      card.draggable = true;
+      card.className = 'prop-card'
+        + (isMoved ? ' prop-moved' : '')
+        + (isSelected ? ' prop-selected' : '');
       card.dataset.name = p.n;
       card.dataset.pane = pane;
       const suumoKw = suumoSearchKeyword(p.n);
       const roomLabel = parts.room
-        ? `<span class="card-muted">${esc(parts.room)}</span>`
+        ? '<span class="card-muted">' + esc(parts.room) + '</span>'
         : '';
       card.innerHTML = `
         <div class="card-inner">
@@ -1574,68 +1653,31 @@ function renderList(containerId, props, pane) {
             <span class="card-muted">${displayAreaName(p._area)}</span>
           </div>
         </div>
-        <button type="button" class="card-arrow" title="${pane === 'repo' ? 'コマへ移動' : 'レポへ移動'}">${arrow}</button>`;
+        <label class="card-select-wrap" title="選択">
+          <input type="checkbox" class="card-select-cb"${isSelected ? ' checked' : ''}>
+          <span class="card-select-num">${isSelected ? selIdx + 1 : ''}</span>
+        </label>`;
 
-      const arrowBtn = card.querySelector('.card-arrow');
-      arrowBtn.addEventListener('click', function (e) {
+      const selectWrap = card.querySelector('.card-select-wrap');
+      const selectCb = card.querySelector('.card-select-cb');
+      selectCb.addEventListener('change', function (e) {
         e.stopPropagation();
-        moveCardLogic(p.n, pane);
+        toggleCardSelection(p.n, pane, selectCb.checked);
+      });
+      selectWrap.addEventListener('click', function (e) {
+        e.stopPropagation();
       });
 
-      // ドラッグ開始
-      card.addEventListener('dragstart', e => {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', JSON.stringify({ name: p.n, fromPane: pane }));
-        setTimeout(() => card.classList.add('dragging'), 0);
-      });
-      card.addEventListener('dragend', () => {
-        card.classList.remove('dragging');
-        document.querySelectorAll('.card-list').forEach(l => l.classList.remove('drag-over'));
-        document.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
-      });
-
-      // リンク・矢印のみクリック可（カード本体クリックでは移動しない）
       card.querySelectorAll('*').forEach(function (child) {
         child.style.pointerEvents = 'none';
       });
-
+      selectWrap.style.pointerEvents = 'auto';
+      selectCb.style.pointerEvents = 'auto';
       const nameLink = card.querySelector('.card-name-link');
       nameLink.style.pointerEvents = 'auto';
-      arrowBtn.style.pointerEvents = 'auto';
       nameLink.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
       el.appendChild(card);
-    });
-  }
-
-  // ドロップゾーン：_ddSetupフラグで重複登録を防ぐ
-  if (!el._ddSetup) {
-    el._ddSetup = true;
-    el.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      el.classList.add('drag-over');
-      if (!el.querySelector('.drop-placeholder')) {
-        const ph = document.createElement('div');
-        ph.className = 'drop-placeholder';
-        el.appendChild(ph);
-      }
-    });
-    el.addEventListener('dragleave', e => {
-      if (!el.contains(e.relatedTarget)) {
-        el.classList.remove('drag-over');
-        el.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
-      }
-    });
-    el.addEventListener('drop', e => {
-      e.preventDefault();
-      el.classList.remove('drag-over');
-      el.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
-      try {
-        const { name, fromPane } = JSON.parse(e.dataTransfer.getData('text/plain'));
-        if (fromPane === pane) return;
-        moveCardLogic(name, fromPane);
-      } catch {}
     });
   }
 }
@@ -1991,12 +2033,27 @@ async function broadcastCollabMove(n, fromPane) {
 }
 
 /* ============================================================
-   カード移動ロジック（クリック・D&D共通）
+   カード移動ロジック（チェックボックス選択 → 移動ボタン）
 ============================================================ */
 function moveCardLogic(n, currentPane) {
   applyMoveLogic(n, currentPane);
   renderCards();
   void broadcastCollabMove(n, currentPane);
+}
+
+function executeMoveSelected(pane) {
+  const names = [...getSelectionList(pane)];
+  if (!names.length) return;
+  if (pane === 'repo') selectedRepo = [];
+  else selectedKoma = [];
+  names.forEach(function (n) {
+    applyMoveLogic(n, pane);
+  });
+  renderCards();
+  names.forEach(function (n) {
+    void broadcastCollabMove(n, pane);
+  });
+  showToast(names.length + '件を' + (pane === 'repo' ? 'コマ' : 'レポ') + 'へ移動しました', 2500);
 }
 
 // 後方互換（onclick属性から呼ばれる場合）
