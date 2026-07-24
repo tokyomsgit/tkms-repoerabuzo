@@ -206,10 +206,10 @@ body{
   color:#111;margin-bottom:6px;
 }
 .card-name-link{
-  color:#0055cc;
-  text-decoration:none;
+  color:#111;
+  text-decoration:underline;
 }
-.card-name-link:hover{text-decoration:underline}
+.card-name-link:hover{color:#333}
 .card-meta{
   display:flex;gap:14px;flex-wrap:wrap;
   font-size:16px;font-weight:700;color:#333;
@@ -577,6 +577,20 @@ body{
         </div>
       </div>
       <button class="text-copy-btn" onclick="sendRemovalMail()" style="margin-top:6px;background:#993333">📧 外し出力をメール作成（all@tokyoms.co.jp）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 他社件数 更新結果 -->
+<div class="text-modal-overlay" id="other-count-result-overlay" onclick="if(event.target===this)closeOtherCountResultModal()">
+  <div class="text-modal" style="max-width:560px">
+    <div class="text-modal-header">
+      <span class="text-modal-title">他社件数 更新結果</span>
+      <button class="text-modal-close" onclick="closeOtherCountResultModal()">×</button>
+    </div>
+    <div class="text-modal-body">
+      <p id="other-count-result-summary" style="font-size:14px;line-height:1.6"></p>
+      <div id="other-count-error-list" style="display:none;margin-top:12px;max-height:280px;overflow-y:auto;font-size:13px;line-height:1.5"></div>
     </div>
   </div>
 </div>
@@ -1427,13 +1441,15 @@ async function triggerOtherCountUpdate() {
   }
 
   setOtherCountBusy(true);
-  let done = 0;
+  let success = 0;
   let errors = 0;
+  const errorLog = [];
   const total = todo.length;
   setOtherCountProgress(0, total);
   showToast('他社件数の取得を開始…', 2000);
 
   let index = 0;
+  let done = 0;
   async function worker() {
     while (index < todo.length) {
       const i = index++;
@@ -1441,8 +1457,14 @@ async function triggerOtherCountUpdate() {
       try {
         const data = await fetchOtherCompanyCount(item.buildingName, item.price);
         await upsertOtherCountResult(data);
+        success += 1;
       } catch (e) {
         errors += 1;
+        errorLog.push({
+          buildingName: item.buildingName,
+          price: item.price,
+          message: e.message || String(e),
+        });
         console.error('他社件数エラー:', item, e);
       }
       done += 1;
@@ -1456,16 +1478,46 @@ async function triggerOtherCountUpdate() {
     for (let w = 0; w < OTHER_COUNT_CONCURRENCY; w++) workers.push(worker());
     await Promise.all(workers);
     renderCards();
-    const msg = errors
-      ? '他社件数更新完了（' + done + '/' + total + '、エラー ' + errors + '件）'
-      : '他社件数更新完了（' + done + '/' + total + '件）';
-    showToast(msg, 6000);
+    reportOtherCountResult(success, errors, errorLog, total);
   } catch (e) {
-    showToast('他社件数更新エラー: ' + e.message, 6000);
+    showToast('他社件数更新エラー: ' + e.message, 8000);
   } finally {
     setOtherCountBusy(false);
     hideOtherCountProgress();
   }
+}
+
+function reportOtherCountResult(success, errors, errorLog, total) {
+  if (errors === 0) {
+    showToast('他社件数を更新しました（' + success + '件）', 5000);
+    return;
+  }
+
+  showToast(
+    '更新完了：成功 ' + success + '件 / エラー ' + errors + '件ありました',
+    8000
+  );
+
+  const summary = document.getElementById('other-count-result-summary');
+  const listEl = document.getElementById('other-count-error-list');
+  if (!summary || !listEl) return;
+
+  summary.innerHTML =
+    '<strong>処理 ' + total + '件中、成功 ' + success + '件、エラー ' + errors + '件</strong>' +
+    '<br><span style="color:#666">以下の物件は取得に失敗しました。</span>';
+
+  listEl.style.display = 'block';
+  listEl.innerHTML = errorLog.map(function (err) {
+    return '<div style="padding:6px 0;border-bottom:1px solid #eee">' +
+      esc(err.buildingName) + '（' + err.price + '万）<br>' +
+      '<span style="color:#cc0000;font-weight:700">' + esc(err.message) + '</span></div>';
+  }).join('');
+
+  document.getElementById('other-count-result-overlay').classList.add('open');
+}
+
+function closeOtherCountResultModal() {
+  document.getElementById('other-count-result-overlay').classList.remove('open');
 }
 
 /* ============================================================
