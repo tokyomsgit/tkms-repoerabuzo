@@ -304,13 +304,16 @@ body{
 .card-muted{color:#777;font-weight:400}
 .card-name-link{
   color:#111;
-  text-decoration:underline;
+  text-decoration:none;
 }
-.card-name-link:hover{color:#333}
+.card-name-link:hover{color:#0055cc}
 .card-meta{
   display:flex;gap:8px 10px;flex-wrap:wrap;
   font-size:16px;font-weight:700;color:#333;
   line-height:1.3;
+  border-top:1px solid #ddd;
+  padding-top:3px;
+  margin-top:2px;
 }
 .card-meta span{white-space:nowrap}
 .card-arrow{
@@ -321,7 +324,15 @@ body{
   color:#111;background:#f0f0f0;
   border:2px solid #111;border-radius:10px;
   line-height:1;
+  cursor:pointer;
+  font-family:inherit;
+  padding:0;
+  appearance:none;
+  -webkit-appearance:none;
   transition:background .15s,color .15s,border-color .15s;
+}
+.card-arrow:hover{
+  background:#111;color:#fff;border-color:#111;
 }
 
 .empty-state{
@@ -1547,10 +1558,13 @@ function renderList(containerId, props, pane) {
             <span class="card-muted">${displayAreaName(p._area)}</span>
           </div>
         </div>
-        <div class="card-arrow">${arrow}</div>`;
+        <button type="button" class="card-arrow" title="${pane === 'repo' ? 'コマへ移動' : 'レポへ移動'}">${arrow}</button>`;
 
-      // クリックで移動
-      card.addEventListener('click', () => moveCardLogic(p.n, pane));
+      const arrowBtn = card.querySelector('.card-arrow');
+      arrowBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        moveCardLogic(p.n, pane);
+      });
 
       // ドラッグ開始
       card.addEventListener('dragstart', e => {
@@ -1564,20 +1578,15 @@ function renderList(containerId, props, pane) {
         document.querySelectorAll('.drop-placeholder').forEach(ph => ph.remove());
       });
 
-      // 子要素のpointer-eventsをなくしてドラッグを親カードに集約
-      card.querySelectorAll('*').forEach(child => {
+      // リンク・矢印のみクリック可（カード本体クリックでは移動しない）
+      card.querySelectorAll('*').forEach(function (child) {
         child.style.pointerEvents = 'none';
       });
 
       const nameLink = card.querySelector('.card-name-link');
       nameLink.style.pointerEvents = 'auto';
-      nameLink.addEventListener('click', e => {
-        e.stopPropagation();
-        e.preventDefault();
-        window.open(suumoSearchUrl(p.n), '_blank', 'noopener,noreferrer');
-      });
-      nameLink.addEventListener('mousedown', e => e.stopPropagation());
-      nameLink.addEventListener('dragstart', e => e.preventDefault());
+      arrowBtn.style.pointerEvents = 'auto';
+      nameLink.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
       el.appendChild(card);
     });
