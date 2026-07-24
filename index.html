@@ -108,7 +108,7 @@ body{
 
 .pane-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 14px;
+  padding:6px 14px;
   border-bottom:2px solid #111;
   flex-shrink:0;
   width:100%;
@@ -121,7 +121,7 @@ body{
 .quota-badge{
   display:inline-flex;align-items:center;gap:4px;
   font-size:13px;font-weight:900;
-  padding:3px 6px;color:#333;
+  padding:2px 4px;color:#333;
 }
 .quota-badge .quota-current{font-size:32px;font-weight:900;line-height:1}
 .quota-badge .quota-limit{font-size:20px;color:#666}
@@ -136,7 +136,7 @@ body{
 .pane-right .pane-header{background:#f5f5f5}
 
 .text-output-btn{
-  padding:6px 14px;
+  padding:4px 14px;
   background:#111;color:#fff;
   border:none;cursor:pointer;
   font-family:inherit;font-weight:700;font-size:13px;
@@ -144,7 +144,7 @@ body{
 .text-output-btn:hover{background:#333}
 .pane-header-btns{display:flex;gap:6px;flex-shrink:0}
 .removal-output-btn{
-  padding:6px 14px;
+  padding:4px 12px;
   background:#fff;color:#cc0000;
   border:2px solid #cc0000;cursor:pointer;
   font-family:inherit;font-weight:700;font-size:13px;
@@ -213,8 +213,8 @@ body{
 /* カードリスト */
 .card-list{
   flex:1;overflow-y:auto;
-  padding:10px 12px;
-  display:flex;flex-direction:column;gap:6px;
+  padding:6px 8px;
+  display:flex;flex-direction:column;gap:4px;
   width:100%;
 }
 .card-list::-webkit-scrollbar{width:4px}
@@ -223,14 +223,14 @@ body{
 /* 物件カード */
 .prop-card{
   display:flex;align-items:center;
-  padding:10px 12px;
-  border-radius:8px;
+  padding:4px 6px;
+  border-radius:6px;
   cursor:pointer;
   user-select:none;
   background:#fff;
   border:1px solid #111;
   transition:transform .1s, box-shadow .1s;
-  gap:10px;
+  gap:6px;
 }
 .prop-card:hover .card-arrow{
   background:#111;color:#fff;border-color:#111;
@@ -248,7 +248,7 @@ body{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   color:#111;
   display:block;
-  margin-bottom:6px;
+  margin-bottom:2px;
 }
 .card-rep{
   font-size:16px;font-weight:900;
@@ -261,21 +261,24 @@ body{
   white-space:nowrap;
 }
 .card-other-missing{color:#999}
+.card-pv{color:#111;font-weight:900}
+.card-muted{color:#999;font-weight:400}
 .card-name-link{
   color:#111;
   text-decoration:underline;
 }
 .card-name-link:hover{color:#333}
 .card-meta{
-  display:flex;gap:14px;flex-wrap:wrap;
+  display:flex;gap:8px 10px;flex-wrap:wrap;
   font-size:16px;font-weight:700;color:#333;
+  line-height:1.3;
 }
 .card-meta span{white-space:nowrap}
 .card-arrow{
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  width:40px;height:40px;
-  font-size:22px;font-weight:900;
+  width:36px;height:36px;
+  font-size:20px;font-weight:900;
   color:#111;background:#f0f0f0;
   border:2px solid #111;border-radius:10px;
   line-height:1;
@@ -424,9 +427,13 @@ body{
     flex-direction:column;align-items:stretch;gap:8px;
     padding:8px 0;
   }
-  .header-left{flex-direction:row;align-items:center;gap:10px}
-  .logo{font-size:17px}
-  #import-time-label{font-size:11px}
+  .header-left{
+    flex-direction:row;align-items:center;justify-content:space-between;
+    width:100%;gap:8px;
+  }
+  .header-meta{text-align:right;flex-shrink:1;min-width:0}
+  .logo{font-size:17px;flex-shrink:0}
+  #import-time-label{font-size:11px;white-space:nowrap}
   .hdr-btns{
     display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%;
   }
@@ -470,7 +477,7 @@ body{
 
   /* ペインヘッダー */
   .pane-header{
-    padding:8px 10px;flex-wrap:wrap;gap:6px;
+    padding:5px 10px;flex-wrap:wrap;gap:4px;
   }
   .pane-title{font-size:15px}
   .pane-header-btns{width:100%}
@@ -482,13 +489,13 @@ body{
   .quota-badge .quota-diff{font-size:13px}
 
   /* カード */
-  .card-list{padding:8px 6px;flex:1}
-  .prop-card{padding:10px;gap:8px}
-  .card-name{font-size:15px;margin-bottom:4px}
+  .card-list{padding:4px 4px;flex:1}
+  .prop-card{padding:4px 5px;gap:5px}
+  .card-name{font-size:15px;margin-bottom:2px}
   .card-rep,.card-other{font-size:13px}
-  .card-meta{font-size:12px;gap:6px 10px}
+  .card-meta{font-size:12px;gap:4px 8px;line-height:1.25}
   .card-arrow{
-    width:44px;height:44px;font-size:20px;border-radius:10px;
+    width:40px;height:40px;font-size:18px;border-radius:8px;
   }
 
   /* エリアドロップダウン */
@@ -537,7 +544,6 @@ body{
   <div class="container">
     <div class="shared-toolbar">
   <div class="toolbar-row">
-    <span class="tb-label">エリア：</span>
     <div class="area-multi-wrap" id="area-multi-wrap">
       <button class="area-multi-btn" id="area-multi-btn" onclick="toggleAreaDropdown()">
         <span id="area-multi-label">全エリア</span>
@@ -553,7 +559,6 @@ body{
     </div>
   </div>
   <div class="toolbar-row">
-    <span class="tb-label">ソート：</span>
     <button class="sort-btn" id="sort-pv"   onclick="setSort('pv')">PV <span class="sort-dir" id="dir-pv">↓</span></button>
     <button class="sort-btn" id="sort-r"    onclick="setSort('r')">反響 <span class="sort-dir" id="dir-r">↓</span></button>
     <button class="sort-btn" id="sort-other" onclick="setSort('other')">他社 <span class="sort-dir" id="dir-other">↓</span></button>
@@ -1386,7 +1391,7 @@ function renderList(containerId, props, pane) {
       const arrow = pane === 'repo' ? '→' : '←';
       const price = p.p ? p.p.toLocaleString() + '万' : '—';
       const areaStr = p.s ? p.s + '㎡' : '—';
-      const pv  = p.pv !== undefined ? `<span style="color:#cc0000">PV ${p.pv}</span>` : '';
+      const pv  = p.pv !== undefined ? `<span class="card-pv">PV ${p.pv}</span>` : '';
       const rep = p.r ? `<span class="card-rep">反響 ${p.r}件</span>` : '';
       const buildingName = suumoSearchKeyword(p.n);
       const cacheKey = buildingName + '|' + Math.round(Number(p.p));
@@ -1408,9 +1413,9 @@ function renderList(containerId, props, pane) {
             ${rep}
             ${pv ? `<span>${pv}</span>` : ''}
             ${otherBadge}
-            <span>${price}</span>
-            <span>${areaStr}</span>
-            <span style="color:#666">${displayAreaName(p._area)}</span>
+            <span class="card-muted">${price}</span>
+            <span class="card-muted">${areaStr}</span>
+            <span class="card-muted">${displayAreaName(p._area)}</span>
           </div>
         </div>
         <div class="card-arrow">${arrow}</div>`;
