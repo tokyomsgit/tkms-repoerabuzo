@@ -11,7 +11,11 @@
 :root{
   --repo-pane-color:#ffe066;
   --koma-pane-color:#7ec8e8;
+  --mobile-font-scale:1;
 }
+html.mobile-fs-s{--mobile-font-scale:0.88}
+html.mobile-fs-m{--mobile-font-scale:1}
+html.mobile-fs-l{--mobile-font-scale:1.15}
 body{
   font-family:'Noto Sans JP','Hiragino Sans',sans-serif;
   font-weight:700;
@@ -224,6 +228,19 @@ body{
   font-size:14px;font-weight:900;color:#444;margin-bottom:10px;
 }
 .settings-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mobile-fs-options{display:flex;gap:10px;flex-wrap:wrap}
+.mobile-fs-option{
+  display:flex;align-items:center;gap:6px;
+  font-size:15px;font-weight:700;cursor:pointer;
+  padding:8px 14px;border:2px solid #ccc;border-radius:6px;
+  background:#fafafa;
+}
+.mobile-fs-option:has(input:checked){
+  border-color:#111;background:#111;color:#fff;
+}
+.mobile-fs-option input{
+  width:16px;height:16px;accent-color:#111;cursor:pointer;
+}
 
 /* カードリスト */
 .card-list{
@@ -469,9 +486,9 @@ body{
   /* ツールバー */
   .toolbar-row{flex-wrap:nowrap;overflow-x:auto;gap:6px;-webkit-overflow-scrolling:touch}
   .toolbar-row::-webkit-scrollbar{height:0}
-  .tb-label{font-size:12px;flex-shrink:0}
-  .area-multi-btn{font-size:13px;min-width:100px;padding:8px 10px;min-height:40px}
-  .sort-btn{font-size:12px;padding:8px 10px;flex-shrink:0;min-height:40px}
+  .tb-label{font-size:calc(12px * var(--mobile-font-scale));flex-shrink:0}
+  .area-multi-btn{font-size:calc(13px * var(--mobile-font-scale));min-width:100px;padding:8px 10px;min-height:40px}
+  .sort-btn{font-size:calc(12px * var(--mobile-font-scale));padding:8px 10px;flex-shrink:0;min-height:40px}
 
   /* レポ／コマタブ */
   .mobile-pane-tabs{
@@ -483,7 +500,7 @@ body{
     flex:1;padding:12px 8px;
     border:none;border-right:2px solid #111;
     background:#f5f5f5;
-    font-family:inherit;font-weight:900;font-size:16px;
+    font-family:inherit;font-weight:900;font-size:calc(16px * var(--mobile-font-scale));
     cursor:pointer;min-height:48px;
   }
   .mobile-pane-tab:last-child{border-right:none}
@@ -502,23 +519,24 @@ body{
   .pane-header{
     padding:5px 10px;flex-wrap:wrap;gap:4px;
   }
-  .pane-title{font-size:15px}
+  .pane-title{font-size:calc(15px * var(--mobile-font-scale))}
   .pane-header-btns{width:100%}
   .text-output-btn,.removal-output-btn{
-    width:100%;font-size:13px;padding:10px;min-height:44px;
+    width:100%;font-size:calc(13px * var(--mobile-font-scale));padding:10px;min-height:44px;
   }
-  .quota-badge .quota-current{font-size:22px}
-  .quota-badge .quota-limit{font-size:13px}
-  .quota-badge .quota-diff{font-size:13px}
+  .quota-badge .quota-current{font-size:calc(22px * var(--mobile-font-scale))}
+  .quota-badge .quota-limit{font-size:calc(13px * var(--mobile-font-scale))}
+  .quota-badge .quota-diff{font-size:calc(13px * var(--mobile-font-scale))}
 
   /* カード */
   .card-list{padding:4px 4px;flex:1}
   .prop-card{padding:4px 5px;gap:5px}
-  .card-name{font-size:15px;margin-bottom:2px}
-  .card-rep,.card-other{font-size:13px}
-  .card-meta{font-size:12px;gap:4px 8px;line-height:1.25}
+  .card-name{font-size:calc(15px * var(--mobile-font-scale));margin-bottom:2px}
+  .card-rep,.card-other{font-size:calc(13px * var(--mobile-font-scale))}
+  .card-meta{font-size:calc(12px * var(--mobile-font-scale));gap:4px 8px;line-height:1.25}
   .card-arrow{
-    width:40px;height:40px;font-size:18px;border-radius:8px;
+    width:calc(40px * var(--mobile-font-scale));height:calc(40px * var(--mobile-font-scale));
+    font-size:calc(18px * var(--mobile-font-scale));border-radius:8px;
   }
 
   /* エリアドロップダウン */
@@ -655,6 +673,14 @@ body{
       <div class="settings-section">
         <div class="settings-section-title">データ更新</div>
         <p class="settings-sync-note" id="settings-sync-note">自動更新：約15分ごと（Drive → Supabase）</p>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">文字サイズ（スマホ）</div>
+        <div class="mobile-fs-options">
+          <label class="mobile-fs-option"><input type="radio" name="mobile-font-size" value="s"> 小</label>
+          <label class="mobile-fs-option"><input type="radio" name="mobile-font-size" value="m" checked> 中</label>
+          <label class="mobile-fs-option"><input type="radio" name="mobile-font-size" value="l"> 大</label>
+        </div>
       </div>
       <div class="settings-section">
         <div class="settings-section-title">エリアテンプレート</div>
@@ -913,6 +939,7 @@ async function initApp() {
   updateSortUI();
   startAutoSyncPoll();
   initMobilePane();
+  initMobileFontSize();
   document.addEventListener('click', closeHdrMenuOutside);
 }
 
@@ -950,6 +977,43 @@ function switchMobilePane(pane) {
 function initMobilePane() {
   applyMobilePaneLayout();
   window.addEventListener('resize', applyMobilePaneLayout);
+}
+
+/* ============================================================
+   スマホ：文字サイズ（小・中・大）
+============================================================ */
+const MOBILE_FONT_SIZE_KEY = 'repoSelectApp_mobileFontSize';
+
+function loadMobileFontSize() {
+  try {
+    var v = localStorage.getItem(MOBILE_FONT_SIZE_KEY);
+    return (v === 's' || v === 'l') ? v : 'm';
+  } catch (e) {
+    return 'm';
+  }
+}
+
+function applyMobileFontSize(size) {
+  if (size !== 's' && size !== 'l') size = 'm';
+  document.documentElement.classList.remove('mobile-fs-s', 'mobile-fs-m', 'mobile-fs-l');
+  document.documentElement.classList.add('mobile-fs-' + size);
+  document.querySelectorAll('input[name="mobile-font-size"]').forEach(function (r) {
+    r.checked = r.value === size;
+  });
+}
+
+function setMobileFontSize(size) {
+  applyMobileFontSize(size);
+  try { localStorage.setItem(MOBILE_FONT_SIZE_KEY, size); } catch (e) {}
+}
+
+function initMobileFontSize() {
+  applyMobileFontSize(loadMobileFontSize());
+  document.querySelectorAll('input[name="mobile-font-size"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      if (r.checked) setMobileFontSize(r.value);
+    });
+  });
 }
 
 /* ============================================================
@@ -1791,6 +1855,7 @@ function openRemovalModal() {
 function closeRemovalModal() { document.getElementById('removal-modal-overlay').classList.remove('open'); }
 
 function openSettingsModal() {
+  applyMobileFontSize(loadMobileFontSize());
   document.getElementById('settings-modal-overlay').classList.add('open');
 }
 function closeSettingsModal() {
