@@ -66,7 +66,18 @@ body{
 .header-meta{display:flex;flex-direction:column;gap:2px;font-weight:700;line-height:1.4}
 #import-time-label{font-size:13px;color:#333}
 .settings-sync-note{font-size:13px;color:#666;line-height:1.5}
-.hdr-btns{display:flex;gap:10px;align-items:center;flex-shrink:0}
+.hdr-menu-wrap{position:relative;flex-shrink:0}
+.hdr-menu-btn{
+  display:none;
+  align-items:center;justify-content:center;
+  width:40px;height:36px;
+  border:2px solid #111;background:#f5f5f5;
+  font-family:inherit;font-size:20px;font-weight:900;
+  cursor:pointer;line-height:1;
+}
+.hdr-menu{
+  display:flex;gap:10px;align-items:center;
+}
 .hdr-btn{
   padding:8px 14px;
   background:#e8e8e8;color:#333;
@@ -260,9 +271,9 @@ body{
   color:#cc0000;
   white-space:nowrap;
 }
-.card-other-missing{color:#999}
+.card-other-missing{color:#777}
 .card-pv{color:#111;font-weight:900}
-.card-muted{color:#999;font-weight:400}
+.card-muted{color:#777;font-weight:400}
 .card-name-link{
   color:#111;
   text-decoration:underline;
@@ -424,22 +435,30 @@ body{
 
   /* ヘッダー */
   .header{
-    flex-direction:column;align-items:stretch;gap:8px;
-    padding:8px 0;
+    flex-direction:row;align-items:center;justify-content:space-between;
+    padding:6px 0;gap:8px;
   }
   .header-left{
+    flex:1;min-width:0;
     flex-direction:row;align-items:center;justify-content:space-between;
-    width:100%;gap:8px;
+    gap:8px;
   }
   .header-meta{text-align:right;flex-shrink:1;min-width:0}
   .logo{font-size:17px;flex-shrink:0}
   #import-time-label{font-size:11px;white-space:nowrap}
-  .hdr-btns{
-    display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%;
+  .hdr-menu-btn{display:flex}
+  .hdr-menu{
+    display:none;position:absolute;top:calc(100% + 4px);right:0;
+    min-width:168px;background:#fff;
+    border:2px solid #111;box-shadow:0 4px 12px rgba(0,0,0,.12);
+    z-index:300;flex-direction:column;gap:0;
   }
-  .hdr-btn{
-    padding:5px 6px;font-size:13px;min-height:0;line-height:1.3;
+  .hdr-menu.open{display:flex}
+  .hdr-menu .hdr-btn{
+    width:100%;border:none;border-bottom:1px solid #ddd;border-radius:0;
+    text-align:left;padding:11px 14px;font-size:14px;line-height:1.3;
   }
+  .hdr-menu .hdr-btn:last-child{border-bottom:none}
   .btn-label-long{display:none}
   .btn-label-short{display:inline}
 
@@ -526,10 +545,13 @@ body{
         <span id="import-time-label">取込：—</span>
       </div>
     </div>
-    <div class="hdr-btns">
-      <button class="hdr-btn" id="other-count-btn" onclick="triggerOtherCountUpdate()"><span class="btn-label-long">他社件数を更新</span><span class="btn-label-short">他社更新</span></button>
-      <button class="hdr-btn gas-sync-btn" onclick="triggerGasSync()"><span class="btn-label-long">Drive同期</span><span class="btn-label-short">Drive</span></button>
-      <button class="hdr-btn" onclick="openSettingsModal()" title="設定">⚙ 設定</button>
+    <div class="hdr-menu-wrap" id="hdr-menu-wrap">
+      <button type="button" class="hdr-menu-btn" id="hdr-menu-btn" onclick="toggleHdrMenu(event)" aria-label="メニュー">☰</button>
+      <div class="hdr-menu" id="hdr-menu">
+        <button class="hdr-btn" id="other-count-btn" onclick="menuOtherCount()"><span class="btn-label-long">他社件数を更新</span><span class="btn-label-short">他社更新</span></button>
+        <button class="hdr-btn gas-sync-btn" onclick="menuGasSync()"><span class="btn-label-long">Drive同期</span><span class="btn-label-short">Drive</span></button>
+        <button class="hdr-btn" onclick="menuSettings()">⚙ 設定</button>
+      </div>
     </div>
   </div>
 </div>
@@ -887,6 +909,7 @@ async function initApp() {
   updateSortUI();
   startAutoSyncPoll();
   initMobilePane();
+  document.addEventListener('click', closeHdrMenuOutside);
 }
 
 /* ============================================================
@@ -908,6 +931,7 @@ function applyMobilePaneLayout() {
   } else {
     left.classList.add('mobile-active');
     right.classList.add('mobile-active');
+    closeHdrMenu();
   }
 }
 
@@ -1767,6 +1791,36 @@ function openSettingsModal() {
 }
 function closeSettingsModal() {
   document.getElementById('settings-modal-overlay').classList.remove('open');
+}
+
+function closeHdrMenu() {
+  var menu = document.getElementById('hdr-menu');
+  if (menu) menu.classList.remove('open');
+}
+
+function toggleHdrMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('hdr-menu').classList.toggle('open');
+}
+
+function menuOtherCount() {
+  closeHdrMenu();
+  triggerOtherCountUpdate();
+}
+
+function menuGasSync() {
+  closeHdrMenu();
+  triggerGasSync();
+}
+
+function menuSettings() {
+  closeHdrMenu();
+  openSettingsModal();
+}
+
+function closeHdrMenuOutside(e) {
+  var wrap = document.getElementById('hdr-menu-wrap');
+  if (wrap && !wrap.contains(e.target)) closeHdrMenu();
 }
 
 function copyRemovalText() {
