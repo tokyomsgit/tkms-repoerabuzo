@@ -275,12 +275,19 @@ body{
 }
 
 .card-inner{flex:1;min-width:0}
+.card-top-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;min-width:0;margin-bottom:2px;
+}
 .card-name{
   font-size:18px;font-weight:900;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   color:#111;
-  display:block;
-  margin-bottom:2px;
+  flex:1;min-width:0;
+}
+.card-stats{
+  display:flex;align-items:center;gap:6px 8px;
+  flex-shrink:0;white-space:nowrap;
 }
 .card-rep{
   font-size:16px;font-weight:900;
@@ -534,8 +541,10 @@ body{
   /* カード */
   .card-list{padding:4px 4px;flex:1}
   .prop-card{padding:4px 5px;gap:5px}
-  .card-name{font-size:calc(15px * var(--mobile-font-scale));margin-bottom:2px}
-  .card-rep,.card-other{font-size:calc(13px * var(--mobile-font-scale))}
+  .card-top-row{margin-bottom:2px;gap:6px}
+  .card-name{font-size:calc(15px * var(--mobile-font-scale))}
+  .card-stats{gap:4px 6px}
+  .card-rep,.card-other,.card-pv{font-size:calc(13px * var(--mobile-font-scale))}
   .card-meta{font-size:calc(12px * var(--mobile-font-scale));gap:4px 8px;line-height:1.25}
   .card-arrow{
     width:calc(40px * var(--mobile-font-scale));height:calc(40px * var(--mobile-font-scale));
@@ -1506,6 +1515,7 @@ function renderList(containerId, props, pane) {
       const areaStr = p.s ? p.s + '㎡' : '—';
       const pv  = p.pv !== undefined ? `<span class="card-pv">PV ${p.pv}</span>` : '';
       const rep = p.r ? `<span class="card-rep">反響 ${p.r}件</span>` : '';
+      const parts = splitPropertyName(p.n);
       const buildingName = suumoSearchKeyword(p.n);
       const cacheKey = buildingName + '|' + Math.round(Number(p.p));
       const otherInfo = otherCountCache.get(cacheKey);
@@ -1519,13 +1529,21 @@ function renderList(containerId, props, pane) {
       card.dataset.name = p.n;
       card.dataset.pane = pane;
       const suumoKw = suumoSearchKeyword(p.n);
+      const roomLabel = parts.room
+        ? `<span class="card-muted">${esc(parts.room)}</span>`
+        : '';
       card.innerHTML = `
         <div class="card-inner">
-          <a class="card-name card-name-link" href="${suumoSearchUrl(p.n)}" target="_blank" rel="noopener noreferrer" title="SUUMOで「${esc(suumoKw)}」を検索">${p.n}</a>
+          <div class="card-top-row">
+            <a class="card-name card-name-link" href="${suumoSearchUrl(p.n)}" target="_blank" rel="noopener noreferrer" title="SUUMOで「${esc(suumoKw)}」を検索">${esc(parts.building || p.n)}</a>
+            <div class="card-stats">
+              ${rep}
+              ${pv}
+              ${otherBadge}
+            </div>
+          </div>
           <div class="card-meta">
-            ${rep}
-            ${pv ? `<span>${pv}</span>` : ''}
-            ${otherBadge}
+            ${roomLabel}
             <span class="card-muted">${price}</span>
             <span class="card-muted">${areaStr}</span>
             <span class="card-muted">${displayAreaName(p._area)}</span>
@@ -1604,10 +1622,16 @@ function esc(s) {
 }
 
 function suumoSearchKeyword(name) {
-  return (name || '').trim()
-    .replace(/\s*[\d\-]+号(?:室)?$/u, '')
-    .replace(/\s+[A-Za-z]?[\d\-]+$/u, '')
-    .trim();
+  return splitPropertyName(name).building;
+}
+
+function splitPropertyName(name) {
+  const n = (name || '').trim();
+  const m = n.match(/^(.+?)\s+([\d\-]+号(?:室)?)$/u);
+  if (m) return { building: m[1].trim(), room: m[2] };
+  const m2 = n.match(/^(.+?)\s+([A-Za-z]?[\d\-]+)$/u);
+  if (m2) return { building: m2[1].trim(), room: m2[2] };
+  return { building: n, room: '' };
 }
 
 function suumoSearchUrl(name) {
